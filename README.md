@@ -24,9 +24,11 @@ A WordPress plugin that enhances the admin Users screen with advanced filtering,
 
 ## Installation
 
-1. Clone or download this repository into your `wp-content/plugins/` directory.
-2. Activate the plugin through **Plugins → Installed Plugins** in the WordPress admin.
-3. Navigate to **Users** to see the new columns, filters, and bulk actions.
+1. Download the latest `wp-user-audit-cleanup.zip` from the **[GitHub Releases Page](https://github.com/ajithrn/wp-user-audit-cleanup/releases/latest)**.
+2. Go to **WordPress Dashboard → Plugins → Add New → Upload Plugin**.
+3. Upload the zip file and click **Install Now**.
+4. Activate the plugin.
+5. Navigate to **Users** to see the new columns, filters, and bulk actions.
 
 ## Usage
 
@@ -42,6 +44,10 @@ A WordPress plugin that enhances the admin Users screen with advanced filtering,
 2. Filter row with date pickers and login status dropdown
 3. Spam Email Lookup page with bulk email matching
 4. Audit Settings page with disposable domain management
+
+## Releases
+
+This project uses GitHub Actions for automated releases. When a version change is pushed to `main`, a new GitHub Release is created automatically with a ready-to-install zip file.
 
 ## Contributing
 
