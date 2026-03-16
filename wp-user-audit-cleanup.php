@@ -3,7 +3,7 @@
  * Plugin Name:       WordPress User Audit & Cleanup
  * Plugin URI:        https://developer.wordpress.org/plugins/
  * Description:       Enhances the WordPress admin Users screen with advanced filtering, spam detection, and bulk management capabilities.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Author:            Ajith R N
  * Author URI:        https://developer.wordpress.org/
  * License:           GPL-2.0-or-later
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'WUAC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WUAC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WUAC_VERSION', '1.2.0' );
+define( 'WUAC_VERSION', '1.3.0' );
 
 /**
  * Require class files from includes/ directory.
@@ -40,6 +40,8 @@ $wuac_includes = array(
     'class-wuac-export',
     'class-wuac-settings',
     'class-wuac-user-scanner',
+    'class-wuac-ajax',
+    'class-wuac-admin-page',
 );
 
 foreach ( $wuac_includes as $file ) {
@@ -85,16 +87,16 @@ function wuac_init() {
 
     // WUAC_Spam_Score — all static methods, no init() needed.
 
-    $email_lookup = new WUAC_Email_Lookup();
-    $email_lookup->init();
+    $admin_page = new WUAC_Admin_Page();
+    $admin_page->init();
 
-    // WUAC_Inactive_Cleanup — no init(), instantiated on-demand by Email Lookup page.
+    $ajax = new WUAC_Ajax();
+    $ajax->init();
+
+    // WUAC_Inactive_Cleanup — no init(), instantiated on-demand by AJAX handler.
 
     $export = new WUAC_Export();
     $export->init();
-
-    $settings = new WUAC_Settings();
-    $settings->init();
 }
 add_action( 'plugins_loaded', 'wuac_init' );
 
@@ -106,15 +108,32 @@ add_action( 'plugins_loaded', 'wuac_init' );
  * @since 1.1.0
  */
 function wuac_enqueue_admin_assets( $hook_suffix ) {
-    $screens = array( 'users.php', 'users_page_wuac-email-lookup', 'users_page_wuac-settings' );
+    // CSS on users list and dashboard page.
+    $css_screens = array( 'users.php', 'users_page_wuac-dashboard' );
 
-    if ( in_array( $hook_suffix, $screens, true ) ) {
+    if ( in_array( $hook_suffix, $css_screens, true ) ) {
         wp_enqueue_style(
             'wuac-admin',
             WUAC_PLUGIN_URL . 'assets/css/admin.css',
             array(),
             WUAC_VERSION
         );
+    }
+
+    // JS only on the dashboard page.
+    if ( 'users_page_wuac-dashboard' === $hook_suffix ) {
+        wp_enqueue_script(
+            'wuac-admin-js',
+            WUAC_PLUGIN_URL . 'assets/js/admin.js',
+            array(),
+            WUAC_VERSION,
+            true
+        );
+
+        wp_localize_script( 'wuac-admin-js', 'wuacData', array(
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'wuac_ajax_nonce' ),
+        ) );
     }
 }
 add_action( 'admin_enqueue_scripts', 'wuac_enqueue_admin_assets' );

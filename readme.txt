@@ -4,7 +4,7 @@ Tags: users, spam, cleanup, audit, security
 Requires at least: 5.9
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,8 +41,7 @@ All plugin features are restricted to administrators with the `manage_options` c
 1. Upload the `wp-user-audit-cleanup` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
 3. Navigate to **Users** to see the new columns, filters, and bulk actions.
-4. Use **Users → Spam Email Lookup** for bulk email matching and inactive user cleanup.
-5. Use **Users → Audit Settings** to manage disposable domains and erase plugin data.
+4. Use **Users → User Audit** for email lookup, inactive cleanup, domain management, and settings.
 
 == Frequently Asked Questions ==
 
@@ -83,14 +82,7 @@ It shows users with a spam score of 70 or higher.
 
 == Planned Features ==
 
-**WooCommerce Card Testing Detection (v1.3.0)**
-
-* Failed order ratio analysis — flag users with many failed orders and no completed ones.
-* Small amount order detection — identify repeated micro-transactions used for card validation.
-* Rapid order velocity — detect multiple orders placed within a short time window.
-* Mismatched billing info across orders.
-
-**Advanced Email Spam Detection (v1.4.0)**
+**Advanced Email Spam Detection (Next)**
 
 * Email entropy scoring to detect gibberish addresses.
 * Gmail dot-trick and plus-addressing normalization.
@@ -99,7 +91,23 @@ It shows users with a spam score of 70 or higher.
 * Domain clustering for suspicious registration patterns.
 * Optional third-party API integration (StopForumSpam, ZeroBounce).
 
+**WooCommerce Card Testing Detection**
+
+* Failed order ratio analysis — flag users with many failed orders and no completed ones.
+* Small amount order detection — identify repeated micro-transactions used for card validation.
+* Rapid order velocity — detect multiple orders placed within a short time window.
+* Mismatched billing info across orders.
+
 == Changelog ==
+
+= 1.3.0 =
+* Unified admin dashboard — Email Lookup, Inactive Cleanup, and Settings combined into a single tabbed page under Users → User Audit.
+* All form actions now use AJAX (no full page reloads).
+* Toast notifications for success/error feedback.
+* Vanilla JS module with no build step required.
+* CSS custom properties for consistent theming.
+* Responsive tab navigation for mobile.
+* Removed separate "Spam Email Lookup" and "Audit Settings" menu items.
 
 = 1.2.0 =
 * Added session token-based login detection for existing users on activation.
@@ -135,6 +143,9 @@ It shows users with a spam score of 70 or higher.
 * CSV export for flagged spam users.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Unified tabbed admin dashboard with AJAX-powered forms. No more separate menu items.
 
 = 1.2.0 =
 Improved spam detection with comment and WooCommerce order checks. Session token-based login backfill for existing users.

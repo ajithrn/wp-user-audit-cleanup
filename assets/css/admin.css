@@ -6,6 +6,125 @@
  */
 
 /* ==========================================================================
+   CSS Custom Properties
+   ========================================================================== */
+
+:root {
+	--wuac-border: #c3c4c7;
+	--wuac-bg: #fff;
+	--wuac-text: #1d2327;
+	--wuac-text-muted: #646970;
+	--wuac-text-label: #50575e;
+	--wuac-accent: #2271b1;
+	--wuac-success-bg: #d1e7dd;
+	--wuac-success-text: #0a3622;
+	--wuac-warning-bg: #fff3cd;
+	--wuac-warning-text: #664d03;
+	--wuac-danger-bg: #f8d7da;
+	--wuac-danger-text: #842029;
+	--wuac-danger-border: #d63638;
+	--wuac-muted-bg: #f0f0f1;
+	--wuac-radius: 4px;
+	--wuac-gap: 12px;
+}
+
+/* ==========================================================================
+   Tab Navigation
+   ========================================================================== */
+
+.wuac-tabs {
+	display: flex;
+	gap: 0;
+	border-bottom: 1px solid var(--wuac-border);
+	margin: 16px 0 0;
+}
+
+.wuac-tab {
+	padding: 10px 20px;
+	border: 1px solid transparent;
+	border-bottom: none;
+	border-radius: var(--wuac-radius) var(--wuac-radius) 0 0;
+	background: none;
+	color: var(--wuac-text-muted);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: color 0.15s, background 0.15s;
+	margin-bottom: -1px;
+}
+
+.wuac-tab:hover {
+	color: var(--wuac-text);
+	background: var(--wuac-muted-bg);
+}
+
+.wuac-tab--active {
+	color: var(--wuac-text);
+	background: var(--wuac-bg);
+	border-color: var(--wuac-border);
+	font-weight: 600;
+}
+
+.wuac-panel {
+	padding-top: 20px;
+}
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+
+.wuac-toast {
+	position: fixed;
+	top: 40px;
+	right: 20px;
+	z-index: 99999;
+	padding: 12px 20px;
+	border-radius: var(--wuac-radius);
+	font-size: 14px;
+	font-weight: 500;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	animation: wuac-slide-in 0.25s ease-out;
+}
+
+.wuac-toast--success {
+	background: var(--wuac-success-bg);
+	color: var(--wuac-success-text);
+	border: 1px solid var(--wuac-success-text);
+}
+
+.wuac-toast--error {
+	background: var(--wuac-danger-bg);
+	color: var(--wuac-danger-text);
+	border: 1px solid var(--wuac-danger-border);
+}
+
+@keyframes wuac-slide-in {
+	from { transform: translateX(100%); opacity: 0; }
+	to   { transform: translateX(0); opacity: 1; }
+}
+
+/* ==========================================================================
+   Loading State
+   ========================================================================== */
+
+.wuac-loading {
+	opacity: 0.6;
+	pointer-events: none;
+	position: relative;
+}
+
+/* ==========================================================================
+   Inline Forms
+   ========================================================================== */
+
+.wuac-inline-form {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--wuac-gap);
+	flex-wrap: wrap;
+}
+
+/* ==========================================================================
    Users List — Filter Row
    ========================================================================== */
 
@@ -13,12 +132,12 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-end;
-	gap: 12px;
+	gap: var(--wuac-gap);
 	padding: 12px 16px;
 	margin: 8px 0 4px;
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
+	background: var(--wuac-bg);
+	border: 1px solid var(--wuac-border);
+	border-radius: var(--wuac-radius);
 	margin-top: 50px;
 }
 
@@ -31,7 +150,7 @@
 .wuac-filter-group label {
 	font-size: 12px;
 	font-weight: 600;
-	color: #50575e;
+	color: var(--wuac-text-label);
 	text-transform: uppercase;
 	letter-spacing: 0.3px;
 }
@@ -75,18 +194,18 @@
 }
 
 .wuac-score--low {
-	background: #d1e7dd;
-	color: #0a3622;
+	background: var(--wuac-success-bg);
+	color: var(--wuac-success-text);
 }
 
 .wuac-score--medium {
-	background: #fff3cd;
-	color: #664d03;
+	background: var(--wuac-warning-bg);
+	color: var(--wuac-warning-text);
 }
 
 .wuac-score--high {
-	background: #f8d7da;
-	color: #842029;
+	background: var(--wuac-danger-bg);
+	color: var(--wuac-danger-text);
 }
 
 .wuac-last-login--never {
@@ -105,13 +224,13 @@
 }
 
 /* ==========================================================================
-   Admin Pages — Shared Layout
+   Admin Pages — Card Layout
    ========================================================================== */
 
 .wuac-card {
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
+	background: var(--wuac-bg);
+	border: 1px solid var(--wuac-border);
+	border-radius: var(--wuac-radius);
 	padding: 20px 24px;
 	margin-bottom: 20px;
 }
@@ -120,28 +239,29 @@
 	margin-top: 0;
 	padding-top: 0;
 	padding-bottom: 8px;
-	border-bottom: 1px solid #f0f0f1;
+	border-bottom: 1px solid var(--wuac-muted-bg);
 	margin-bottom: 16px;
 }
 
 .wuac-card p.description {
-	color: #646970;
+	color: var(--wuac-text-muted);
 	margin-top: 0;
 }
 
 /* ==========================================================================
-   Email Lookup Page
+   Email Lookup
    ========================================================================== */
 
-.wuac-email-lookup-section textarea {
+#wuac-panel-lookup textarea {
 	font-family: Consolas, Monaco, monospace;
 	font-size: 13px;
+	margin-bottom: var(--wuac-gap);
 }
 
 .wuac-results-summary {
 	display: flex;
 	gap: 16px;
-	margin-bottom: 12px;
+	margin-bottom: var(--wuac-gap);
 }
 
 .wuac-results-summary .wuac-stat {
@@ -149,57 +269,30 @@
 	align-items: center;
 	gap: 6px;
 	padding: 8px 16px;
-	border-radius: 4px;
+	border-radius: var(--wuac-radius);
 	font-size: 14px;
 	font-weight: 500;
 }
 
 .wuac-stat--matched {
-	background: #d1e7dd;
-	color: #0a3622;
+	background: var(--wuac-success-bg);
+	color: var(--wuac-success-text);
 }
 
 .wuac-stat--unmatched {
-	background: #f0f0f1;
-	color: #50575e;
+	background: var(--wuac-muted-bg);
+	color: var(--wuac-text-label);
 }
 
 /* ==========================================================================
-   Inactive Cleanup Section
+   Settings — Domain List
    ========================================================================== */
-
-.wuac-inactive-form {
-	display: flex;
-	align-items: flex-end;
-	gap: 12px;
-	flex-wrap: wrap;
-}
-
-.wuac-inactive-form .wuac-filter-group {
-	flex-direction: column;
-}
-
-/* ==========================================================================
-   Settings Page — Domain List
-   ========================================================================== */
-
-.wuac-domain-add-form {
-	display: flex;
-	align-items: flex-end;
-	gap: 8px;
-	margin-bottom: 16px;
-}
-
-.wuac-domain-add-form .wuac-filter-group {
-	flex: 1;
-	max-width: 400px;
-}
 
 .wuac-domain-list-container {
 	max-height: 400px;
 	overflow-y: auto;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
+	border: 1px solid var(--wuac-border);
+	border-radius: var(--wuac-radius);
 }
 
 .wuac-domain-list-container table {
@@ -207,16 +300,16 @@
 }
 
 /* ==========================================================================
-   Erase Data Section
+   Danger Zone
    ========================================================================== */
 
 .wuac-danger-zone {
-	border-color: #d63638;
+	border-color: var(--wuac-danger-border);
 }
 
 .wuac-danger-zone h2 {
-	color: #d63638;
-	border-bottom-color: #f8d7da;
+	color: var(--wuac-danger-border);
+	border-bottom-color: var(--wuac-danger-bg);
 }
 
 .wuac-danger-zone .button-link-delete {
@@ -228,6 +321,23 @@
    ========================================================================== */
 
 @media screen and (max-width: 782px) {
+	.wuac-tabs {
+		flex-direction: column;
+		border-bottom: none;
+	}
+
+	.wuac-tab {
+		border-radius: 0;
+		border-bottom: 1px solid var(--wuac-border);
+		margin-bottom: 0;
+	}
+
+	.wuac-tab--active {
+		background: var(--wuac-accent);
+		color: #fff;
+		border-color: var(--wuac-accent);
+	}
+
 	.wuac-filter-row {
 		flex-direction: column;
 		align-items: stretch;
@@ -244,5 +354,10 @@
 
 	.wuac-results-summary {
 		flex-direction: column;
+	}
+
+	.wuac-inline-form {
+		flex-direction: column;
+		align-items: stretch;
 	}
 }

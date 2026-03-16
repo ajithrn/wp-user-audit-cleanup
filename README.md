@@ -31,8 +31,10 @@ A WordPress plugin that enhances the admin Users screen with advanced filtering,
 ## Usage
 
 - **Users List** — New "Last Login" and "Spam Score" columns appear automatically. Use the filter row above the table to narrow results.
-- **Users → Spam Email Lookup** — Bulk email matching and inactive user cleanup.
-- **Users → Audit Settings** — Manage disposable domains and erase plugin data.
+- **Users → User Audit** — Unified dashboard with three tabs:
+  - **Email Lookup** — Bulk email matching and deletion
+  - **Inactive Cleanup** — Find and remove users who never logged in
+  - **Settings** — Domain management, user scanner, and data erasure
 
 ## Screenshots
 
@@ -53,15 +55,7 @@ Please follow the [WordPress Coding Standards](https://developer.wordpress.org/c
 
 ## Roadmap
 
-### v1.3.0 — WooCommerce Card Testing Detection
-
-- **Failed order ratio** — Flag users with multiple failed/cancelled orders and zero completed ones.
-- **Small amount orders** — Detect users with repeated orders below a configurable threshold (e.g., 3+ orders under $5).
-- **Rapid order velocity** — Flag users placing multiple orders within a short time window (e.g., 5+ orders in 1 hour).
-- **Multiple payment method failures** — Detect different card numbers tried in quick succession via order meta.
-- **Mismatched billing info** — Flag users with different billing names/addresses across orders.
-
-### v1.4.0 — Advanced Email Spam Detection
+### Advanced Email Spam Detection (Next)
 
 - **Email entropy scoring** — Detect gibberish local parts (e.g., `xkj3892kd@gmail.com`) using randomness analysis.
 - **Gmail dot-trick normalization** — Identify duplicate accounts using Gmail dot variations (`u.s.e.r` vs `user`).
@@ -70,6 +64,14 @@ Please follow the [WordPress Coding Standards](https://developer.wordpress.org/c
 - **Role-based email detection** — Flag registrations using `admin@`, `info@`, `test@`, `noreply@` prefixes.
 - **Domain clustering** — Detect suspicious patterns when many users register with the same uncommon domain.
 - **Third-party API integration** — Optional integration with StopForumSpam, Abstract API, or ZeroBounce for real-time email validation.
+
+### WooCommerce Card Testing Detection
+
+- **Failed order ratio** — Flag users with multiple failed/cancelled orders and zero completed ones.
+- **Small amount orders** — Detect users with repeated orders below a configurable threshold (e.g., 3+ orders under $5).
+- **Rapid order velocity** — Flag users placing multiple orders within a short time window (e.g., 5+ orders in 1 hour).
+- **Multiple payment method failures** — Detect different card numbers tried in quick succession via order meta.
+- **Mismatched billing info** — Flag users with different billing names/addresses across orders.
 
 ## License
 
