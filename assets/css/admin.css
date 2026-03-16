@@ -1,0 +1,248 @@
+/**
+ * WordPress User Audit & Cleanup — Admin Styles
+ *
+ * @package WP_User_Audit_Cleanup
+ * @since   1.0.0
+ */
+
+/* ==========================================================================
+   Users List — Filter Row
+   ========================================================================== */
+
+.wuac-filter-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+	padding: 12px 16px;
+	margin: 8px 0 4px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	margin-top: 50px;
+}
+
+.wuac-filter-group {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.wuac-filter-group label {
+	font-size: 12px;
+	font-weight: 600;
+	color: #50575e;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+}
+
+.wuac-filter-group input[type="date"] {
+	min-width: 140px;
+	padding: 4px 8px;
+	height: 30px;
+}
+
+.wuac-filter-group select {
+	min-width: 180px;
+	height: 30px;
+}
+
+.wuac-filter-date-range {
+	display: flex;
+	align-items: flex-end;
+	gap: 6px;
+}
+
+.wuac-filter-date-range .wuac-date-separator {
+	font-size: 12px;
+	color: #8c8f94;
+	padding-bottom: 5px;
+}
+
+/* ==========================================================================
+   Users List — Spam Score Column
+   ========================================================================== */
+
+.wuac-score {
+	display: inline-block;
+	min-width: 28px;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: center;
+	line-height: 1.4;
+}
+
+.wuac-score--low {
+	background: #d1e7dd;
+	color: #0a3622;
+}
+
+.wuac-score--medium {
+	background: #fff3cd;
+	color: #664d03;
+}
+
+.wuac-score--high {
+	background: #f8d7da;
+	color: #842029;
+}
+
+.wuac-last-login--never {
+	color: #b32d2e;
+	font-style: italic;
+}
+
+/* ==========================================================================
+   Spam View — Action Bar
+   ========================================================================== */
+
+.wuac-spam-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* ==========================================================================
+   Admin Pages — Shared Layout
+   ========================================================================== */
+
+.wuac-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px 24px;
+	margin-bottom: 20px;
+}
+
+.wuac-card h2 {
+	margin-top: 0;
+	padding-top: 0;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #f0f0f1;
+	margin-bottom: 16px;
+}
+
+.wuac-card p.description {
+	color: #646970;
+	margin-top: 0;
+}
+
+/* ==========================================================================
+   Email Lookup Page
+   ========================================================================== */
+
+.wuac-email-lookup-section textarea {
+	font-family: Consolas, Monaco, monospace;
+	font-size: 13px;
+}
+
+.wuac-results-summary {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 12px;
+}
+
+.wuac-results-summary .wuac-stat {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border-radius: 4px;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.wuac-stat--matched {
+	background: #d1e7dd;
+	color: #0a3622;
+}
+
+.wuac-stat--unmatched {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+/* ==========================================================================
+   Inactive Cleanup Section
+   ========================================================================== */
+
+.wuac-inactive-form {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.wuac-inactive-form .wuac-filter-group {
+	flex-direction: column;
+}
+
+/* ==========================================================================
+   Settings Page — Domain List
+   ========================================================================== */
+
+.wuac-domain-add-form {
+	display: flex;
+	align-items: flex-end;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.wuac-domain-add-form .wuac-filter-group {
+	flex: 1;
+	max-width: 400px;
+}
+
+.wuac-domain-list-container {
+	max-height: 400px;
+	overflow-y: auto;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.wuac-domain-list-container table {
+	margin: 0;
+}
+
+/* ==========================================================================
+   Erase Data Section
+   ========================================================================== */
+
+.wuac-danger-zone {
+	border-color: #d63638;
+}
+
+.wuac-danger-zone h2 {
+	color: #d63638;
+	border-bottom-color: #f8d7da;
+}
+
+.wuac-danger-zone .button-link-delete {
+	margin-top: 8px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+	.wuac-filter-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.wuac-filter-date-range {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.wuac-filter-date-range .wuac-date-separator {
+		display: none;
+	}
+
+	.wuac-results-summary {
+		flex-direction: column;
+	}
+}
