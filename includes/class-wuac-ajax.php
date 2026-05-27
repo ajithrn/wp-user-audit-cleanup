@@ -64,11 +64,18 @@ class WUAC_Ajax {
             wp_send_json_error( array( 'message' => $result ) );
         }
 
-        // Append spam score to each matched user.
-        if ( class_exists( 'WUAC_Spam_Score' ) && ! empty( $result['matched'] ) ) {
+        // Append spam score and factors to each matched user.
+        if ( ! empty( $result['matched'] ) ) {
             $result['matched'] = array_map( function ( $user_data ) {
                 $user = get_userdata( (int) $user_data['ID'] );
-                $user_data['spam_score'] = $user ? WUAC_Spam_Score::calculate( $user ) : 0;
+                if ( $user ) {
+                    $spam_data = $this->get_user_spam_data( $user );
+                    $user_data['spam_score']   = $spam_data['score'];
+                    $user_data['spam_factors'] = $spam_data['factors'];
+                } else {
+                    $user_data['spam_score']   = 0;
+                    $user_data['spam_factors'] = array();
+                }
                 return $user_data;
             }, $result['matched'] );
         }
@@ -126,7 +133,16 @@ class WUAC_Ajax {
             $user_obj   = get_userdata( $user->ID );
             $role       = ( $user_obj && ! empty( $user_obj->roles ) ) ? reset( $user_obj->roles ) : 'none';
             $last_login = get_user_meta( $user->ID, '_wuac_last_login', true );
-            $spam_score = ( class_exists( 'WUAC_Spam_Score' ) && $user_obj ) ? WUAC_Spam_Score::calculate( $user_obj ) : 0;
+            
+            if ( $user_obj ) {
+                $spam_data    = $this->get_user_spam_data( $user_obj );
+                $spam_score   = $spam_data['score'];
+                $spam_factors = $spam_data['factors'];
+            } else {
+                $spam_score   = 0;
+                $spam_factors = array();
+            }
+
             return array(
                 'ID'              => $user->ID,
                 'user_login'      => $user->user_login,
@@ -135,6 +151,7 @@ class WUAC_Ajax {
                 'role'            => $role,
                 'last_login'      => $last_login ? $last_login : '',
                 'spam_score'      => $spam_score,
+                'spam_factors'    => $spam_factors,
             );
         }, $users );
 
@@ -279,8 +296,8 @@ class WUAC_Ajax {
                         continue;
                     }
 
-                    $score = WUAC_Spam_Score::calculate( $user );
-                    if ( $score >= $min_score ) {
+                    $spam_data = $this->get_user_spam_data( $user );
+                    if ( $spam_data['score'] >= $min_score ) {
                         $user_role  = ! empty( $user->roles ) ? reset( $user->roles ) : 'none';
                         $last_login = get_user_meta( $user->ID, '_wuac_last_login', true );
                         $high_risk_users[] = array(
@@ -289,7 +306,8 @@ class WUAC_Ajax {
                             'user_email'      => $user->user_email,
                             'user_registered' => $user->user_registered,
                             'role'            => $user_role,
-                            'spam_score'      => $score,
+                            'spam_score'      => $spam_data['score'],
+                            'spam_factors'    => $spam_data['factors'],
                             'last_login'      => $last_login ? $last_login : '',
                         );
                     }
@@ -446,5 +464,29 @@ class WUAC_Ajax {
         $domains = WUAC_Disposable_Domains::get_domains();
         sort( $domains );
         return $domains;
+    }
+
+    /**
+     * Get user spam score and breakdown factors.
+     *
+     * @param WP_User $user The WordPress user object.
+     * @return array Array containing 'score' and 'factors'.
+     */
+    private function get_user_spam_data( WP_User $user ): array {
+        if ( ! class_exists( 'WUAC_Spam_Score' ) ) {
+            return array( 'score' => 0, 'factors' => array() );
+        }
+        $score     = WUAC_Spam_Score::calculate( $user );
+        $breakdown = WUAC_Spam_Score::get_breakdown( $user );
+        $factors   = array();
+        foreach ( $breakdown as $factor ) {
+            if ( $factor['triggered'] ) {
+                $factors[] = array(
+                    'label'  => $factor['label'],
+                    'points' => $factor['points'],
+                );
+            }
+        }
+        return array( 'score' => $score, 'factors' => $factors );
     }
 }

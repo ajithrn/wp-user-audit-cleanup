@@ -46,6 +46,23 @@
         btn.classList.toggle('wuac-loading', loading);
     }
 
+    function showLoadingOverlay(wrap, message) {
+        const card = wrap.querySelector('.wuac-card');
+        if (card) {
+            let overlay = card.querySelector('.wuac-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'wuac-overlay';
+                overlay.innerHTML = '<div class="wuac-overlay-content"><span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span> ' + esc(message) + '</div>';
+                card.style.position = 'relative';
+                card.appendChild(overlay);
+            }
+        } else {
+            wrap.innerHTML = '<div class="wuac-card wuac-loading-card"><span class="spinner is-active" style="float:none;margin:0 8px 0 0;vertical-align:middle;"></span> ' + esc(message) + '</div>';
+            wrap.hidden = false;
+        }
+    }
+
     function esc(str) {
         const d = document.createElement('div');
         d.textContent = str;
@@ -120,9 +137,18 @@
         return '<a href="' + esc(adminUrl) + 'user-edit.php?user_id=' + esc(id) + '" target="_blank">' + esc(login) + '</a>';
     }
 
-    function scoreHtml(score) {
+    function scoreHtml(score, factors = []) {
         const level = score >= 70 ? 'high' : (score >= 40 ? 'medium' : 'low');
-        return '<span class="wuac-score wuac-score--' + level + '">' + esc(score) + '</span>';
+        let tooltip = '';
+        if (factors && factors.length > 0) {
+            factors.forEach(f => {
+                tooltip += '<span class="wuac-factor--hit">✗ ' + esc(f.label) + ' (+' + f.points + ')</span><br>';
+            });
+        } else {
+            tooltip = '<span class="wuac-factor--miss">✓ No risk factors detected</span>';
+        }
+        return '<span class="wuac-score wuac-score--' + level + '">' + esc(score) +
+               '<span class="wuac-score-tooltip">' + tooltip + '</span></span>';
     }
 
     function loginHtml(val) {
@@ -324,8 +350,11 @@
                 if (!ids.length) { toast('No users selected.', 'error'); return; }
                 if (!confirm('Delete ' + ids.length + ' user(s)? This cannot be undone.')) return;
                 setLoading(deleteBtn, true);
+                showLoadingOverlay(container, 'Deleting selected user(s)...');
                 const res = await post('wuac_delete_users', { user_ids: ids });
                 setLoading(deleteBtn, false);
+                const overlay = container.querySelector('.wuac-overlay');
+                if (overlay) overlay.remove();
                 res.success ? toast(res.data.message) : toast(res.data.message, 'error');
                 if (res.success) {
                     selectedIds.clear();
@@ -340,8 +369,11 @@
                 if (!ids.length) { toast('No users selected.', 'error'); return; }
                 if (!confirm('Flag ' + ids.length + ' user(s) as spam?')) return;
                 setLoading(flagBtn, true);
+                showLoadingOverlay(container, 'Flagging selected user(s) as spam...');
                 const res = await post('wuac_flag_users', { user_ids: ids });
                 setLoading(flagBtn, false);
+                const overlay = container.querySelector('.wuac-overlay');
+                if (overlay) overlay.remove();
                 res.success ? toast(res.data.message) : toast(res.data.message, 'error');
                 if (res.success) {
                     selectedIds.clear();
@@ -355,8 +387,11 @@
                 deleteAllBtn.addEventListener('click', async () => {
                     if (!confirm('Delete ALL ' + count + ' matching user(s)? This cannot be undone.')) return;
                     setLoading(deleteAllBtn, true);
+                    showLoadingOverlay(container, 'Deleting all matching users...');
                     const res = await post(opts.deleteAll.action, opts.deleteAll.params || {});
                     setLoading(deleteAllBtn, false);
+                    const overlay = container.querySelector('.wuac-overlay');
+                    if (overlay) overlay.remove();
                     res.success ? toast(res.data.message) : toast(res.data.message, 'error');
                     if (res.success) refreshFn();
                 });
@@ -383,7 +418,7 @@
 
         btn.addEventListener('click', async () => {
             setLoading(btn, true);
-            resultsWrap.hidden = true;
+            showLoadingOverlay(resultsWrap, 'Performing lookup...');
 
             const res = await post('wuac_email_lookup', { emails: textarea.value });
             setLoading(btn, false);
@@ -411,7 +446,7 @@
                 { key: 'user_login', label: 'Username', sortType: 'str', render: u => userLink(u.user_login, u.ID) },
                 { key: 'user_email', label: 'Email', sortType: 'str' },
                 { key: 'role', label: 'Role', sortType: 'str', render: u => '<span class="wuac-role-badge">' + esc(u.role || 'none') + '</span>' },
-                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0) },
+                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0, u.spam_factors || []) },
                 { key: 'user_registered', label: 'Registered', sortType: 'str' },
             ];
 
@@ -439,9 +474,16 @@
         const typeSelect = document.getElementById('wuac-inactive-type');
         const resultsWrap = document.getElementById('wuac-inactive-results');
 
+        daysInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                findBtn.click();
+            }
+        });
+
         findBtn.addEventListener('click', async () => {
             setLoading(findBtn, true);
-            resultsWrap.hidden = true;
+            showLoadingOverlay(resultsWrap, 'Finding inactive users...');
 
             const params = {
                 days: daysInput.value,
@@ -460,7 +502,7 @@
                 { key: 'user_login', label: 'Username', sortType: 'str', render: u => userLink(u.user_login, u.ID) },
                 { key: 'user_email', label: 'Email', sortType: 'str' },
                 { key: 'role', label: 'Role', sortType: 'str', render: u => '<span class="wuac-role-badge">' + esc(u.role || 'none') + '</span>' },
-                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0) },
+                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0, u.spam_factors || []) },
                 { key: 'last_login', label: 'Last Login', sortType: 'str', render: u => loginHtml(u.last_login) },
                 { key: 'user_registered', label: 'Registered', sortType: 'str' },
             ];
@@ -489,9 +531,16 @@
         const resultsWrap = document.getElementById('wuac-spam-cleanup-results');
         if (!findBtn) return;
 
+        minScoreInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                findBtn.click();
+            }
+        });
+
         findBtn.addEventListener('click', async () => {
             setLoading(findBtn, true);
-            resultsWrap.hidden = true;
+            showLoadingOverlay(resultsWrap, 'Scanning for high risk users...');
 
             const params = {
                 min_score: minScoreInput ? minScoreInput.value : 70,
@@ -510,7 +559,7 @@
                 { key: 'user_login', label: 'Username', sortType: 'str', render: u => userLink(u.user_login, u.ID) },
                 { key: 'user_email', label: 'Email', sortType: 'str' },
                 { key: 'role', label: 'Role', sortType: 'str', render: u => '<span class="wuac-role-badge">' + esc(u.role || 'none') + '</span>' },
-                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0) },
+                { key: 'spam_score', label: 'Score', sortType: 'num', render: u => scoreHtml(u.spam_score || 0, u.spam_factors || []) },
                 { key: 'last_login', label: 'Last Login', sortType: 'str', render: u => loginHtml(u.last_login) },
                 { key: 'user_registered', label: 'Registered', sortType: 'str' },
             ];

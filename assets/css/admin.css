@@ -522,3 +522,38 @@
 	color: var(--wuac-text);
 }
 
+/* Loading Overlay & Cards */
+.wuac-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.7);
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--wuac-radius);
+}
+
+.wuac-overlay-content {
+	background: #fff;
+	padding: 12px 24px;
+	border-radius: var(--wuac-radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	border: 1px solid var(--wuac-border);
+	font-weight: 500;
+	display: flex;
+	align-items: center;
+}
+
+.wuac-loading-card {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 24px;
+	color: var(--wuac-text-muted);
+	font-weight: 500;
+}
+
