@@ -135,8 +135,30 @@ class WUAC_Admin_Page {
             <div class="wuac-panel" id="wuac-panel-spam-cleanup" role="tabpanel" data-tab="spam-cleanup" hidden>
                 <div class="wuac-card">
                     <h2><?php esc_html_e( 'Spam Cleanup (High Risk)', 'wp-user-audit-cleanup' ); ?></h2>
-                    <p class="description"><?php esc_html_e( 'Find and bulk delete users whose calculated spam score is high (≥ 70).', 'wp-user-audit-cleanup' ); ?></p>
+                    <p class="description"><?php esc_html_e( 'Find and bulk delete users whose calculated spam score is high.', 'wp-user-audit-cleanup' ); ?></p>
                     <div class="wuac-inline-form">
+                        <div class="wuac-filter-group">
+                            <label for="wuac-spam-min-score"><?php esc_html_e( 'Min Score', 'wp-user-audit-cleanup' ); ?></label>
+                            <input type="number" id="wuac-spam-min-score" value="70" min="0" max="100" class="small-text" />
+                        </div>
+
+                        <div class="wuac-filter-group">
+                            <label for="wuac-spam-role"><?php esc_html_e( 'Role', 'wp-user-audit-cleanup' ); ?></label>
+                            <select id="wuac-spam-role">
+                                <option value="all"><?php esc_html_e( 'All Roles', 'wp-user-audit-cleanup' ); ?></option>
+                                <?php
+                                $roles = wp_roles()->get_names();
+                                foreach ( $roles as $role_key => $role_name ) {
+                                    printf(
+                                        '<option value="%s">%s</option>',
+                                        esc_attr( $role_key ),
+                                        esc_html( translate_user_role( $role_name ) )
+                                    );
+                                }
+                                ?>
+                            </select>
+                        </div>
+
                         <button type="button" id="wuac-find-spam-btn" class="button button-primary"><?php esc_html_e( 'Find High Risk Users', 'wp-user-audit-cleanup' ); ?></button>
                     </div>
                 </div>

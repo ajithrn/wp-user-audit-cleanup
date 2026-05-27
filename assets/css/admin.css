@@ -444,3 +444,81 @@
 .wuac-score-tooltip .wuac-factor--miss {
 	color: #27ae60;
 }
+
+/* ==========================================================================
+   Sortable Table Headers
+   ========================================================================== */
+
+.wuac-sortable-th {
+	cursor: pointer;
+	user-select: none;
+	white-space: nowrap;
+}
+
+.wuac-sortable-th:hover {
+	color: var(--wuac-accent);
+}
+
+.wuac-sort-icon {
+	font-size: 11px;
+	opacity: 0.4;
+	margin-left: 2px;
+}
+
+.wuac-sort-asc .wuac-sort-icon::after { content: ' ↑'; }
+.wuac-sort-desc .wuac-sort-icon::after { content: ' ↓'; }
+.wuac-sort-asc .wuac-sort-icon,
+.wuac-sort-desc .wuac-sort-icon {
+	opacity: 1;
+	color: var(--wuac-accent);
+}
+
+/* ==========================================================================
+   Action Bar (below result tables)
+   ========================================================================== */
+
+.wuac-action-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--wuac-muted-bg);
+}
+
+.wuac-action-bar .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* Pagination */
+.wuac-pagination {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 12px;
+	padding: 8px 0;
+	font-size: 13px;
+	color: var(--wuac-text-muted);
+}
+
+.wuac-pagination-buttons {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.wuac-pagination-buttons .button {
+	height: 28px;
+	line-height: 26px;
+	padding: 0 10px;
+}
+
+.wuac-page-current {
+	margin: 0 8px;
+	font-weight: 500;
+	color: var(--wuac-text);
+}
+

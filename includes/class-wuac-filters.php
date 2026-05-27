@@ -368,31 +368,35 @@ class WUAC_Filters {
 
         global $wpdb;
 
-        $matching_ids = array();
-        $batch_size   = 500;
-        $offset       = 0;
+        // 1. Get user IDs matching the range from the cached meta table.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $meta_matching_ids = $wpdb->get_col( $wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = '_wuac_spam_score' AND CAST(meta_value AS SIGNED) BETWEEN %d AND %d",
+            $this->filter_risk_min,
+            $this->filter_risk_max
+        ) );
 
-        do {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $batch = $wpdb->get_col( $wpdb->prepare(
-                "SELECT ID FROM {$wpdb->users} LIMIT %d OFFSET %d",
-                $batch_size,
-                $offset
-            ) );
+        $matching_ids = array_map( 'intval', $meta_matching_ids );
 
-            foreach ( $batch as $user_id ) {
+        // 2. Find any users who don't have a cached score yet.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $uncached_ids = $wpdb->get_col(
+            "SELECT ID FROM {$wpdb->users} WHERE ID NOT IN (SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = '_wuac_spam_score')"
+        );
+
+        if ( ! empty( $uncached_ids ) ) {
+            foreach ( $uncached_ids as $user_id ) {
                 $user = get_userdata( (int) $user_id );
                 if ( ! $user ) {
                     continue;
                 }
                 $score = WUAC_Spam_Score::calculate( $user );
+                update_user_meta( $user_id, '_wuac_spam_score', $score );
                 if ( $score >= $this->filter_risk_min && $score <= $this->filter_risk_max ) {
                     $matching_ids[] = (int) $user_id;
                 }
             }
-
-            $offset += $batch_size;
-        } while ( count( $batch ) === $batch_size );
+        }
 
         if ( empty( $matching_ids ) ) {
             // Force empty result set.

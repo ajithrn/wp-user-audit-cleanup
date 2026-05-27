@@ -63,10 +63,13 @@ class WUAC_Columns {
             if ( class_exists( 'WUAC_Spam_Score' ) ) {
                 $user = get_userdata( $user_id );
                 if ( $user instanceof WP_User ) {
-                    $score = WUAC_Spam_Score::calculate( $user );
-                    
-                    // Cache score in user meta to enable sorting.
-                    update_user_meta( $user_id, '_wuac_spam_score', $score );
+                    $score = get_user_meta( $user_id, '_wuac_spam_score', true );
+                    if ( '' === $score ) {
+                        $score = WUAC_Spam_Score::calculate( $user );
+                        update_user_meta( $user_id, '_wuac_spam_score', $score );
+                    } else {
+                        $score = (int) $score;
+                    }
 
                     if ( $score >= 70 ) {
                         $level = 'high';

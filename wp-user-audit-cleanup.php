@@ -3,7 +3,7 @@
  * Plugin Name:       WordPress User Audit & Cleanup
  * Plugin URI:        https://developer.wordpress.org/plugins/
  * Description:       Enhances the WordPress admin Users screen with advanced filtering, spam detection, and bulk management capabilities.
- * Version:           1.5.2
+ * Version:           1.6.0
  * Author:            Ajith R N
  * Author URI:        https://developer.wordpress.org/
  * License:           GPL-2.0-or-later
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'WUAC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WUAC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WUAC_VERSION', '1.5.2' );
+define( 'WUAC_VERSION', '1.6.0' );
 
 /**
  * Require class files from includes/ directory.
@@ -38,7 +38,6 @@ $wuac_includes = array(
     'class-wuac-disposable-domains',
     'class-wuac-inactive-cleanup',
     'class-wuac-export',
-    'class-wuac-settings',
     'class-wuac-user-scanner',
     'class-wuac-ajax',
     'class-wuac-admin-page',
@@ -131,8 +130,9 @@ function wuac_enqueue_admin_assets( $hook_suffix ) {
         );
 
         wp_localize_script( 'wuac-admin-js', 'wuacData', array(
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce'   => wp_create_nonce( 'wuac_ajax_nonce' ),
+            'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'wuac_ajax_nonce' ),
+            'adminUrl' => admin_url(),
         ) );
     }
 }

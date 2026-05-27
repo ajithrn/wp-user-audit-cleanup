@@ -19,6 +19,7 @@ global $wpdb;
 // Remove all user meta created by the plugin.
 $wpdb->delete( $wpdb->usermeta, array( 'meta_key' => '_wuac_last_login' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 $wpdb->delete( $wpdb->usermeta, array( 'meta_key' => '_wuac_spam_flag' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+$wpdb->delete( $wpdb->usermeta, array( 'meta_key' => '_wuac_spam_score' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 
 // Remove plugin options.
 delete_option( 'wuac_custom_domains' );

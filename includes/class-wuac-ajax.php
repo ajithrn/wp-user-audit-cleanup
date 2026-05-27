@@ -22,9 +22,11 @@ class WUAC_Ajax {
     public function init(): void {
         add_action( 'wp_ajax_wuac_email_lookup', array( $this, 'handle_email_lookup' ) );
         add_action( 'wp_ajax_wuac_delete_users', array( $this, 'handle_delete_users' ) );
+        add_action( 'wp_ajax_wuac_flag_users', array( $this, 'handle_flag_users' ) );
         add_action( 'wp_ajax_wuac_find_inactive', array( $this, 'handle_find_inactive' ) );
-        add_action( 'wp_ajax_wuac_delete_inactive', array( $this, 'handle_delete_inactive' ) );
+        add_action( 'wp_ajax_wuac_delete_all_inactive', array( $this, 'handle_delete_all_inactive' ) );
         add_action( 'wp_ajax_wuac_find_high_risk', array( $this, 'handle_find_high_risk' ) );
+        add_action( 'wp_ajax_wuac_delete_all_high_risk', array( $this, 'handle_delete_all_high_risk' ) );
         add_action( 'wp_ajax_wuac_add_domain', array( $this, 'handle_add_domain' ) );
         add_action( 'wp_ajax_wuac_remove_domain', array( $this, 'handle_remove_domain' ) );
         add_action( 'wp_ajax_wuac_get_domains', array( $this, 'handle_get_domains' ) );
@@ -121,45 +123,22 @@ class WUAC_Ajax {
         $users   = $cleanup->find_inactive_users( $days, $role, $type );
 
         $data = array_map( function ( $user ) {
-            $user_obj = get_userdata( $user->ID );
-            $role     = ( $user_obj && ! empty( $user_obj->roles ) ) ? reset( $user_obj->roles ) : 'none';
+            $user_obj   = get_userdata( $user->ID );
+            $role       = ( $user_obj && ! empty( $user_obj->roles ) ) ? reset( $user_obj->roles ) : 'none';
+            $last_login = get_user_meta( $user->ID, '_wuac_last_login', true );
+            $spam_score = ( class_exists( 'WUAC_Spam_Score' ) && $user_obj ) ? WUAC_Spam_Score::calculate( $user_obj ) : 0;
             return array(
                 'ID'              => $user->ID,
                 'user_login'      => $user->user_login,
                 'user_email'      => $user->user_email,
                 'user_registered' => $user->user_registered,
                 'role'            => $role,
+                'last_login'      => $last_login ? $last_login : '',
+                'spam_score'      => $spam_score,
             );
         }, $users );
 
         wp_send_json_success( array( 'users' => $data, 'count' => count( $data ) ) );
-    }
-
-    /**
-     * Handle delete inactive users AJAX request.
-     *
-     * @return void
-     */
-    public function handle_delete_inactive(): void {
-        $this->verify_request();
-
-        $days = isset( $_POST['days'] ) ? intval( $_POST['days'] ) : 30;
-
-        if ( $days < 1 ) {
-            wp_send_json_error( array( 'message' => __( 'Please enter a value of at least 1 day.', 'wp-user-audit-cleanup' ) ) );
-        }
-
-        $cleanup = new WUAC_Inactive_Cleanup();
-        $deleted = $cleanup->delete_inactive_users( $days, get_current_user_id() );
-
-        wp_send_json_success( array(
-            'deleted' => $deleted,
-            'message' => sprintf(
-                /* translators: %d: number of deleted users */
-                __( 'Successfully deleted %d inactive user(s).', 'wp-user-audit-cleanup' ),
-                $deleted
-            ),
-        ) );
     }
 
     /**
@@ -276,50 +255,185 @@ class WUAC_Ajax {
             wp_send_json_error( array( 'message' => __( 'Spam scoring engine not available.', 'wp-user-audit-cleanup' ) ) );
         }
 
-        global $wpdb;
+        $min_score = isset( $_POST['min_score'] ) ? intval( $_POST['min_score'] ) : 70;
+        $role      = isset( $_POST['role'] ) ? sanitize_text_field( wp_unslash( $_POST['role'] ) ) : 'all';
+
+        $args = array(
+            'fields' => 'ID',
+            'number' => -1,
+        );
+        if ( 'all' !== $role ) {
+            $args['role'] = $role;
+        }
+
+        $user_query = new WP_User_Query( $args );
+        $user_ids   = $user_query->get_results();
         $high_risk_users = array();
-        $batch_size      = 200;
-        $offset          = 0;
 
-        do {
-            // Fetch user IDs in batches to avoid loading everything into memory at once.
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $batch_ids = $wpdb->get_col( $wpdb->prepare(
-                "SELECT ID FROM {$wpdb->users} LIMIT %d OFFSET %d",
-                $batch_size,
-                $offset
-            ) );
+        if ( ! empty( $user_ids ) ) {
+            $chunks = array_chunk( $user_ids, 200 );
+            foreach ( $chunks as $chunk ) {
+                foreach ( $chunk as $user_id ) {
+                    $user = get_userdata( (int) $user_id );
+                    if ( ! $user ) {
+                        continue;
+                    }
 
-            if ( empty( $batch_ids ) ) {
-                break;
-            }
-
-            foreach ( $batch_ids as $user_id ) {
-                $user = get_userdata( (int) $user_id );
-                if ( ! $user ) {
-                    continue;
-                }
-
-                $score = WUAC_Spam_Score::calculate( $user );
-                if ( $score >= 70 ) {
-                    $role = ! empty( $user->roles ) ? reset( $user->roles ) : 'none';
-                    $high_risk_users[] = array(
-                        'ID'              => $user->ID,
-                        'user_login'      => $user->user_login,
-                        'user_email'      => $user->user_email,
-                        'user_registered' => $user->user_registered,
-                        'role'            => $role,
-                        'spam_score'      => $score,
-                    );
+                    $score = WUAC_Spam_Score::calculate( $user );
+                    if ( $score >= $min_score ) {
+                        $user_role  = ! empty( $user->roles ) ? reset( $user->roles ) : 'none';
+                        $last_login = get_user_meta( $user->ID, '_wuac_last_login', true );
+                        $high_risk_users[] = array(
+                            'ID'              => $user->ID,
+                            'user_login'      => $user->user_login,
+                            'user_email'      => $user->user_email,
+                            'user_registered' => $user->user_registered,
+                            'role'            => $user_role,
+                            'spam_score'      => $score,
+                            'last_login'      => $last_login ? $last_login : '',
+                        );
+                    }
                 }
             }
-
-            $offset += $batch_size;
-        } while ( count( $batch_ids ) === $batch_size );
+        }
 
         wp_send_json_success( array(
             'users' => $high_risk_users,
             'count' => count( $high_risk_users ),
+        ) );
+    }
+
+    /**
+     * Handle flag selected users as spam AJAX request.
+     *
+     * @return void
+     */
+    public function handle_flag_users(): void {
+        $this->verify_request();
+
+        $user_ids = isset( $_POST['user_ids'] ) ? array_map( 'intval', (array) $_POST['user_ids'] ) : array();
+
+        if ( empty( $user_ids ) ) {
+            wp_send_json_error( array( 'message' => __( 'No users selected.', 'wp-user-audit-cleanup' ) ) );
+        }
+
+        $flagged = 0;
+        foreach ( $user_ids as $user_id ) {
+            update_user_meta( (int) $user_id, '_wuac_spam_flag', '1' );
+            $flagged++;
+        }
+
+        wp_send_json_success( array(
+            'flagged' => $flagged,
+            'message' => sprintf(
+                /* translators: %d: number of flagged users */
+                __( 'Successfully flagged %d user(s) as spam.', 'wp-user-audit-cleanup' ),
+                $flagged
+            ),
+        ) );
+    }
+
+    /**
+     * Handle delete ALL inactive users server-side.
+     *
+     * Re-queries using the same filters instead of receiving IDs,
+     * which avoids PHP max_input_vars limits on large result sets.
+     *
+     * @return void
+     */
+    public function handle_delete_all_inactive(): void {
+        $this->verify_request();
+
+        $days = isset( $_POST['days'] ) ? intval( $_POST['days'] ) : 30;
+        $role = isset( $_POST['role'] ) ? sanitize_text_field( wp_unslash( $_POST['role'] ) ) : 'all';
+        $type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'both';
+
+        if ( $days < 1 ) {
+            wp_send_json_error( array( 'message' => __( 'Invalid days value.', 'wp-user-audit-cleanup' ) ) );
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+
+        $cleanup     = new WUAC_Inactive_Cleanup();
+        $users       = $cleanup->find_inactive_users( $days, $role, $type );
+        $reassign_to = get_current_user_id();
+        $deleted     = 0;
+
+        foreach ( $users as $user ) {
+            if ( (int) $user->ID !== $reassign_to ) {
+                wp_delete_user( (int) $user->ID, $reassign_to );
+                $deleted++;
+            }
+        }
+
+        wp_send_json_success( array(
+            'deleted' => $deleted,
+            'message' => sprintf(
+                /* translators: %d: number of deleted users */
+                __( 'Successfully deleted %d inactive user(s).', 'wp-user-audit-cleanup' ),
+                $deleted
+            ),
+        ) );
+    }
+
+    /**
+     * Handle delete ALL high-risk users server-side.
+     *
+     * Scans users in batches and deletes those scoring above the threshold.
+     *
+     * @return void
+     */
+    public function handle_delete_all_high_risk(): void {
+        $this->verify_request();
+
+        if ( ! class_exists( 'WUAC_Spam_Score' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Spam scoring engine not available.', 'wp-user-audit-cleanup' ) ) );
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+
+        $min_score   = isset( $_POST['min_score'] ) ? intval( $_POST['min_score'] ) : 70;
+        $role        = isset( $_POST['role'] ) ? sanitize_text_field( wp_unslash( $_POST['role'] ) ) : 'all';
+        $reassign_to = get_current_user_id();
+        $deleted     = 0;
+
+        $args = array(
+            'fields' => 'ID',
+            'number' => -1,
+        );
+        if ( 'all' !== $role ) {
+            $args['role'] = $role;
+        }
+
+        $user_query = new WP_User_Query( $args );
+        $user_ids   = $user_query->get_results();
+
+        if ( ! empty( $user_ids ) ) {
+            foreach ( $user_ids as $user_id ) {
+                $user_id = (int) $user_id;
+                if ( $user_id === $reassign_to ) {
+                    continue;
+                }
+
+                $user = get_userdata( $user_id );
+                if ( ! $user ) {
+                    continue;
+                }
+
+                if ( WUAC_Spam_Score::calculate( $user ) >= $min_score ) {
+                    wp_delete_user( $user_id, $reassign_to );
+                    $deleted++;
+                }
+            }
+        }
+
+        wp_send_json_success( array(
+            'deleted' => $deleted,
+            'message' => sprintf(
+                /* translators: %d: number of deleted users */
+                __( 'Successfully deleted %d high risk user(s).', 'wp-user-audit-cleanup' ),
+                $deleted
+            ),
         ) );
     }
 
