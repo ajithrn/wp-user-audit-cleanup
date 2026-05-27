@@ -334,7 +334,8 @@ class WUAC_Filters {
     /**
      * Modify the SQL query to restrict results to high-risk users.
      *
-     * Fetches all user IDs, computes spam scores, and injects an IN clause.
+     * Processes users in batches to avoid memory exhaustion on large sites,
+     * computes spam scores, and injects an IN clause.
      *
      * @param WP_User_Query $query The user query (passed by reference).
      */
@@ -348,20 +349,30 @@ class WUAC_Filters {
 
         global $wpdb;
 
-        // Get all non-admin user IDs to evaluate.
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-        $all_user_ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->users}" );
-
         $high_risk_ids = array();
-        foreach ( $all_user_ids as $user_id ) {
-            $user = get_userdata( (int) $user_id );
-            if ( ! $user ) {
-                continue;
+        $batch_size    = 500;
+        $offset        = 0;
+
+        do {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $batch = $wpdb->get_col( $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->users} LIMIT %d OFFSET %d",
+                $batch_size,
+                $offset
+            ) );
+
+            foreach ( $batch as $user_id ) {
+                $user = get_userdata( (int) $user_id );
+                if ( ! $user ) {
+                    continue;
+                }
+                if ( WUAC_Spam_Score::calculate( $user ) >= 70 ) {
+                    $high_risk_ids[] = (int) $user_id;
+                }
             }
-            if ( WUAC_Spam_Score::calculate( $user ) >= 70 ) {
-                $high_risk_ids[] = (int) $user_id;
-            }
-        }
+
+            $offset += $batch_size;
+        } while ( count( $batch ) === $batch_size );
 
         if ( empty( $high_risk_ids ) ) {
             // Force empty result set.

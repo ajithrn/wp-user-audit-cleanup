@@ -21,26 +21,6 @@ class WUAC_Email_Lookup {
     const MAX_EMAILS = 5000;
 
     /**
-     * Register hooks.
-     */
-    public function init(): void {
-        add_action( 'admin_menu', array( $this, 'register_page' ) );
-    }
-
-    /**
-     * Register the "Spam Email Lookup" page under the Users menu.
-     */
-    public function register_page(): void {
-        add_users_page(
-            __( 'Spam Email Lookup', 'wp-user-audit-cleanup' ),
-            __( 'Spam Email Lookup', 'wp-user-audit-cleanup' ),
-            'manage_options',
-            'wuac-email-lookup',
-            array( $this, 'render_page' )
-        );
-    }
-
-    /**
      * Render the Spam Email Lookup admin page.
      *
      * Handles form display, email lookup results, and delete actions.

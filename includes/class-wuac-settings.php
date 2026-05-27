@@ -16,13 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WUAC_Settings {
 
     /**
-     * Register hooks.
-     *
-     * @return void
+     * NOTE: Settings UI is now handled by WUAC_Admin_Page (unified dashboard).
+     * This class retains its form-handling methods for backward compatibility.
      */
-    public function init(): void {
-        add_action( 'admin_menu', array( $this, 'register_page' ) );
-    }
 
     /**
      * Register the settings page under the Users menu.

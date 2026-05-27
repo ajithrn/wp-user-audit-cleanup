@@ -22,6 +22,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WUAC_Disposable_Domains {
 
     /**
+     * Static cache for the effective domain list.
+     *
+     * @var array|null
+     */
+    private static ?array $cached_domains = null;
+
+    /**
      * Register hooks.
      *
      * @return void
@@ -59,6 +66,10 @@ class WUAC_Disposable_Domains {
      * @return array List of disposable domain strings.
      */
     public static function get_domains(): array {
+        if ( null !== self::$cached_domains ) {
+            return self::$cached_domains;
+        }
+
         $bundled_file = WUAC_PLUGIN_DIR . 'data/disposable-domains.php';
         $bundled      = file_exists( $bundled_file ) ? include $bundled_file : array();
 
@@ -84,7 +95,20 @@ class WUAC_Disposable_Domains {
         // Effective list = (bundled + custom) - removed.
         $merged = array_unique( array_merge( $bundled, $custom ) );
 
-        return array_values( array_diff( $merged, $removed ) );
+        self::$cached_domains = array_values( array_diff( $merged, $removed ) );
+
+        return self::$cached_domains;
+    }
+
+    /**
+     * Invalidate the static domain cache.
+     *
+     * Called after add/remove operations to ensure fresh data.
+     *
+     * @return void
+     */
+    public static function invalidate_cache(): void {
+        self::$cached_domains = null;
     }
 
     /**
@@ -115,6 +139,8 @@ class WUAC_Disposable_Domains {
         $custom[] = $domain;
         update_option( 'wuac_custom_domains', $custom );
 
+        // Invalidate static cache.
+        self::invalidate_cache();
         // If this domain was previously removed, un-remove it.
         $removed = get_option( 'wuac_removed_domains', array() );
 
@@ -179,6 +205,9 @@ class WUAC_Disposable_Domains {
             $removed[] = $domain;
             update_option( 'wuac_removed_domains', array_values( $removed ) );
         }
+
+        // Invalidate static cache.
+        self::invalidate_cache();
 
         return true;
     }

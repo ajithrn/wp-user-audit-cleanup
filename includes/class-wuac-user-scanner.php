@@ -21,6 +21,11 @@ class WUAC_User_Scanner {
     const AUTO_FLAG_THRESHOLD = 70;
 
     /**
+     * Number of users to process per batch.
+     */
+    const BATCH_SIZE = 200;
+
+    /**
      * Run the full scan: backfill login data, then auto-flag high-risk users.
      *
      * @return array{backfilled: int, flagged: int, scanned: int}
@@ -84,42 +89,55 @@ class WUAC_User_Scanner {
     /**
      * Auto-flag users with spam score at or above the threshold.
      *
+     * Processes users in batches to avoid memory exhaustion on large sites.
      * Skips users who are already flagged and never flags the current user.
      *
      * @return array{scanned: int, flagged: int}
      */
     public static function auto_flag_spam(): array {
-        $users = get_users( array(
-            'fields' => 'all',
-            'number' => 0,
-        ) );
-
         $current_user_id = get_current_user_id();
         $scanned         = 0;
         $flagged         = 0;
+        $offset          = 0;
 
-        foreach ( $users as $user ) {
-            // Never auto-flag the current admin.
-            if ( $user->ID === $current_user_id ) {
-                continue;
-            }
+        do {
+            $users = get_users( array(
+                'fields'     => 'all',
+                'number'     => self::BATCH_SIZE,
+                'offset'     => $offset,
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key'     => '_wuac_spam_flag',
+                        'compare' => 'NOT EXISTS',
+                    ),
+                    array(
+                        'key'     => '_wuac_spam_flag',
+                        'value'   => '1',
+                        'compare' => '!=',
+                    ),
+                ),
+            ) );
 
-            // Skip already-flagged users.
-            $existing_flag = get_user_meta( $user->ID, '_wuac_spam_flag', true );
-            if ( '1' === $existing_flag ) {
-                continue;
-            }
+            foreach ( $users as $user ) {
+                // Never auto-flag the current admin.
+                if ( $user->ID === $current_user_id ) {
+                    continue;
+                }
 
-            $scanned++;
+                $scanned++;
 
-            if ( class_exists( 'WUAC_Spam_Score' ) ) {
-                $score = WUAC_Spam_Score::calculate( $user );
-                if ( $score >= self::AUTO_FLAG_THRESHOLD ) {
-                    update_user_meta( $user->ID, '_wuac_spam_flag', '1' );
-                    $flagged++;
+                if ( class_exists( 'WUAC_Spam_Score' ) ) {
+                    $score = WUAC_Spam_Score::calculate( $user );
+                    if ( $score >= self::AUTO_FLAG_THRESHOLD ) {
+                        update_user_meta( $user->ID, '_wuac_spam_flag', '1' );
+                        $flagged++;
+                    }
                 }
             }
-        }
+
+            $offset += self::BATCH_SIZE;
+        } while ( count( $users ) === self::BATCH_SIZE );
 
         return array(
             'scanned' => $scanned,
