@@ -74,10 +74,13 @@ class WUAC_Admin_Page {
             <div class="wuac-panel" id="wuac-panel-lookup" role="tabpanel" data-tab="lookup">
                 <div class="wuac-card">
                     <h2><?php esc_html_e( 'Email Lookup', 'wp-user-audit-cleanup' ); ?></h2>
-                    <p class="description"><?php esc_html_e( 'Paste suspected spam email addresses to find matching user accounts.', 'wp-user-audit-cleanup' ); ?></p>
-                    <label for="wuac-email-list"><?php esc_html_e( 'Email addresses (one per line):', 'wp-user-audit-cleanup' ); ?></label>
-                    <textarea id="wuac-email-list" rows="10" class="large-text" placeholder="user1@example.com&#10;user2@example.com"></textarea>
-                    <button type="button" id="wuac-lookup-btn" class="button button-primary"><?php esc_html_e( 'Look Up Emails', 'wp-user-audit-cleanup' ); ?></button>
+                    <p class="description"><?php esc_html_e( 'Paste email addresses or use wildcard patterns to find matching user accounts.', 'wp-user-audit-cleanup' ); ?></p>
+                    <label for="wuac-email-list"><?php esc_html_e( 'Email addresses or patterns (one per line):', 'wp-user-audit-cleanup' ); ?></label>
+                    <textarea id="wuac-email-list" rows="10" class="large-text" placeholder="user1@example.com&#10;*.ru&#10;*@tempmail*&#10;*casino*@*"></textarea>
+                    <p class="description wuac-pattern-hint">
+                        <?php esc_html_e( 'Patterns: Use * as wildcard. Examples: *.ru (all .ru domains), *@yandex.* (Yandex emails), *casino*@* (casino in email).', 'wp-user-audit-cleanup' ); ?>
+                    </p>
+                    <button type="button" id="wuac-lookup-btn" class="button button-primary"><?php esc_html_e( 'Look Up', 'wp-user-audit-cleanup' ); ?></button>
                 </div>
                 <div id="wuac-lookup-results" hidden></div>
             </div>

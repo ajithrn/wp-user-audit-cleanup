@@ -103,25 +103,33 @@
                 return;
             }
 
-            const { matched, unmatched_count } = res.data;
+            const { matched, unmatched_count, patterns_used } = res.data;
             let html = '<div class="wuac-card">';
             html += '<div class="wuac-results-summary">';
             html += '<span class="wuac-stat wuac-stat--matched">' + matched.length + ' matched</span>';
-            html += '<span class="wuac-stat wuac-stat--unmatched">' + unmatched_count + ' unmatched</span>';
+            if (unmatched_count > 0) {
+                html += '<span class="wuac-stat wuac-stat--unmatched">' + unmatched_count + ' unmatched</span>';
+            }
+            if (patterns_used > 0) {
+                html += '<span class="wuac-stat wuac-stat--pattern">' + patterns_used + ' pattern(s) used</span>';
+            }
             html += '</div>';
 
             if (matched.length > 0) {
                 html += '<table class="wp-list-table widefat fixed striped users">';
                 html += '<thead><tr>';
                 html += '<td class="manage-column column-cb check-column"><input type="checkbox" id="wuac-select-all" /></td>';
-                html += '<th>ID</th><th>Username</th><th>Email</th><th>Registered</th>';
+                html += '<th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Score</th><th>Registered</th>';
                 html += '</tr></thead><tbody>';
                 matched.forEach(u => {
+                    const scoreLevel = u.spam_score >= 70 ? 'high' : (u.spam_score >= 40 ? 'medium' : 'low');
                     html += '<tr>';
                     html += '<th class="check-column"><input type="checkbox" class="wuac-user-cb" value="' + esc(u.ID) + '" /></th>';
                     html += '<td>' + esc(u.ID) + '</td>';
                     html += '<td>' + esc(u.user_login) + '</td>';
                     html += '<td>' + esc(u.user_email) + '</td>';
+                    html += '<td><span class="wuac-role-badge">' + esc(u.role || 'none') + '</span></td>';
+                    html += '<td><span class="wuac-score wuac-score--' + scoreLevel + '">' + (u.spam_score || 0) + '</span></td>';
                     html += '<td>' + esc(u.user_registered) + '</td>';
                     html += '</tr>';
                 });
@@ -190,12 +198,13 @@
 
             if (count > 0) {
                 html += '<table class="wp-list-table widefat fixed striped users">';
-                html += '<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Registered</th></tr></thead><tbody>';
+                html += '<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Registered</th></tr></thead><tbody>';
                 users.forEach(u => {
                     html += '<tr>';
                     html += '<td>' + esc(u.ID) + '</td>';
                     html += '<td>' + esc(u.user_login) + '</td>';
                     html += '<td>' + esc(u.user_email) + '</td>';
+                    html += '<td><span class="wuac-role-badge">' + esc(u.role || 'none') + '</span></td>';
                     html += '<td>' + esc(u.user_registered) + '</td>';
                     html += '</tr>';
                 });

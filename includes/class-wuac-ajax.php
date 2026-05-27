@@ -61,6 +61,15 @@ class WUAC_Ajax {
             wp_send_json_error( array( 'message' => $result ) );
         }
 
+        // Append spam score to each matched user.
+        if ( class_exists( 'WUAC_Spam_Score' ) && ! empty( $result['matched'] ) ) {
+            $result['matched'] = array_map( function ( $user_data ) {
+                $user = get_userdata( (int) $user_data['ID'] );
+                $user_data['spam_score'] = $user ? WUAC_Spam_Score::calculate( $user ) : 0;
+                return $user_data;
+            }, $result['matched'] );
+        }
+
         wp_send_json_success( $result );
     }
 
@@ -109,11 +118,14 @@ class WUAC_Ajax {
         $users   = $cleanup->find_inactive_users( $days );
 
         $data = array_map( function ( $user ) {
+            $user_obj = get_userdata( $user->ID );
+            $role     = ( $user_obj && ! empty( $user_obj->roles ) ) ? reset( $user_obj->roles ) : 'none';
             return array(
                 'ID'              => $user->ID,
                 'user_login'      => $user->user_login,
                 'user_email'      => $user->user_email,
                 'user_registered' => $user->user_registered,
+                'role'            => $role,
             );
         }, $users );
 

@@ -70,7 +70,24 @@ class WUAC_Columns {
                     } else {
                         $level = 'low';
                     }
-                    return '<span class="wuac-score wuac-score--' . esc_attr( $level ) . '">' . esc_html( $score ) . '</span>';
+
+                    // Build tooltip with factor breakdown.
+                    $breakdown = WUAC_Spam_Score::get_breakdown( $user );
+                    $tooltip   = '';
+                    foreach ( $breakdown as $factor ) {
+                        if ( $factor['triggered'] ) {
+                            $tooltip .= '<span class="wuac-factor--hit">✗ ' . esc_html( $factor['label'] ) . ' (+' . $factor['points'] . ')</span><br>';
+                        }
+                    }
+
+                    if ( '' === $tooltip ) {
+                        $tooltip = '<span class="wuac-factor--miss">✓ No risk factors detected</span>';
+                    }
+
+                    return '<span class="wuac-score wuac-score--' . esc_attr( $level ) . '">'
+                        . esc_html( $score )
+                        . '<span class="wuac-score-tooltip">' . $tooltip . '</span>'
+                        . '</span>';
                 }
             }
             return __( 'N/A', 'wp-user-audit-cleanup' );
