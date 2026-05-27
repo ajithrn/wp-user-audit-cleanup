@@ -198,9 +198,13 @@
 
             if (count > 0) {
                 html += '<table class="wp-list-table widefat fixed striped users">';
-                html += '<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Registered</th></tr></thead><tbody>';
+                html += '<thead><tr>';
+                html += '<td class="manage-column column-cb check-column" style="width: 2.2em;"><input type="checkbox" id="wuac-inactive-select-all" /></td>';
+                html += '<th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Registered</th>';
+                html += '</tr></thead><tbody>';
                 users.forEach(u => {
                     html += '<tr>';
+                    html += '<th class="check-column"><input type="checkbox" class="wuac-inactive-cb" value="' + esc(u.ID) + '" /></th>';
                     html += '<td>' + esc(u.ID) + '</td>';
                     html += '<td>' + esc(u.user_login) + '</td>';
                     html += '<td>' + esc(u.user_email) + '</td>';
@@ -209,25 +213,45 @@
                     html += '</tr>';
                 });
                 html += '</tbody></table>';
-                html += '<button type="button" id="wuac-delete-inactive-btn" class="button button-link-delete" style="margin-top:12px">Delete All Inactive (' + count + ')</button>';
+                html += '<button type="button" id="wuac-delete-inactive-selected-btn" class="button button-link-delete" style="margin-top:12px">Delete Selected</button>';
             }
 
             html += '</div>';
             resultsWrap.innerHTML = html;
             resultsWrap.hidden = false;
 
-            const deleteBtn = document.getElementById('wuac-delete-inactive-btn');
+            // Handle Select All
+            const selectAll = document.getElementById('wuac-inactive-select-all');
+            if (selectAll) {
+                selectAll.addEventListener('change', () => {
+                    document.querySelectorAll('.wuac-inactive-cb').forEach(cb => {
+                        cb.checked = selectAll.checked;
+                    });
+                });
+            }
+
+            const deleteBtn = document.getElementById('wuac-delete-inactive-selected-btn');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', async () => {
-                    if (!confirm('Delete ' + count + ' inactive user(s)? This cannot be undone.')) return;
+                    const selectedIds = Array.from(document.querySelectorAll('.wuac-inactive-cb:checked')).map(cb => cb.value);
+                    
+                    if (selectedIds.length === 0) {
+                        toast('No users selected.', 'error');
+                        return;
+                    }
+
+                    if (!confirm('Delete ' + selectedIds.length + ' selected inactive user(s)? This cannot be undone.')) {
+                        return;
+                    }
 
                     setLoading(deleteBtn, true);
-                    const delRes = await post('wuac_delete_inactive', { days: daysInput.value });
+                    const delRes = await post('wuac_delete_users', { user_ids: selectedIds });
                     setLoading(deleteBtn, false);
 
                     if (delRes.success) {
                         toast(delRes.data.message);
-                        resultsWrap.hidden = true;
+                        // Refresh the search list
+                        findBtn.click();
                     } else {
                         toast(delRes.data.message, 'error');
                     }

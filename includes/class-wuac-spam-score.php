@@ -20,20 +20,23 @@ class WUAC_Spam_Score {
      *
      * @since 1.4.0 Rebalanced weights and added new factors.
      */
-    const WEIGHT_NO_LOGIN          = 25;
-    const WEIGHT_RECENT_REG        = 5;
-    const WEIGHT_DISPOSABLE        = 30;
-    const WEIGHT_DIGIT_USERNAME    = 10;
-    const WEIGHT_GIBBERISH_USER    = 15;
-    const WEIGHT_BOT_PATTERN_USER  = 15;
-    const WEIGHT_NAME_IS_EMAIL     = 15;
-    const WEIGHT_NAME_IS_LOGIN     = 10;
-    const WEIGHT_NAME_HAS_SPAM     = 25;
-    const WEIGHT_NO_COMMENTS       = 5;
-    const WEIGHT_NO_ORDERS         = 5;
-    const WEIGHT_SUSPICIOUS_EMAIL  = 15;
-    const WEIGHT_PLUS_ADDRESSING   = 5;
-    const WEIGHT_SPAM_URL          = 15;
+    const WEIGHT_NO_LOGIN                = 25;
+    const WEIGHT_RECENT_REG              = 5;
+    const WEIGHT_DISPOSABLE              = 30;
+    const WEIGHT_DIGIT_USERNAME          = 10;
+    const WEIGHT_GIBBERISH_USER          = 15;
+    const WEIGHT_BOT_PATTERN_USER        = 15;
+    const WEIGHT_NAME_IS_EMAIL           = 15;
+    const WEIGHT_NAME_IS_LOGIN           = 10;
+    const WEIGHT_NAME_HAS_SPAM           = 25;
+    const WEIGHT_NO_COMMENTS             = 5;
+    const WEIGHT_NO_ORDERS               = 5;
+    const WEIGHT_SUSPICIOUS_EMAIL        = 15;
+    const WEIGHT_PLUS_ADDRESSING         = 5;
+    const WEIGHT_SPAM_URL                = 15;
+    const WEIGHT_EMAIL_LOCAL_EQUALS_USER = 15;
+    const WEIGHT_EMAIL_SPAM_TLD          = 20;
+    const WEIGHT_EXCESSIVE_DOTS          = 25;
 
     /**
      * Spam keywords found in display names and URLs.
@@ -61,7 +64,7 @@ class WUAC_Spam_Score {
         '.xyz', '.top', '.click', '.loan', '.tk', '.ml', '.ga', '.cf', '.gq',
         '.work', '.date', '.review', '.stream', '.download', '.racing',
         '.win', '.bid', '.trade', '.party', '.science', '.accountant',
-        '.cricket', '.faith', '.men', '.webcam',
+        '.cricket', '.faith', '.men', '.webcam', '.online',
     );
 
     /**
@@ -111,7 +114,9 @@ class WUAC_Spam_Score {
             $score += self::WEIGHT_NAME_HAS_SPAM;
         }
 
-        if ( self::has_suspicious_email( $user->user_email ) ) {
+        if ( self::has_excessive_dots( $user->user_email ) ) {
+            $score += self::WEIGHT_EXCESSIVE_DOTS;
+        } elseif ( self::has_suspicious_email( $user->user_email ) ) {
             $score += self::WEIGHT_SUSPICIOUS_EMAIL;
         }
 
@@ -129,6 +134,14 @@ class WUAC_Spam_Score {
 
         if ( self::has_no_orders( $user->ID ) ) {
             $score += self::WEIGHT_NO_ORDERS;
+        }
+
+        if ( self::email_local_equals_username( $user ) ) {
+            $score += self::WEIGHT_EMAIL_LOCAL_EQUALS_USER;
+        }
+
+        if ( self::email_domain_has_spam_tld( $user->user_email ) ) {
+            $score += self::WEIGHT_EMAIL_SPAM_TLD;
         }
 
         return min( $score, 100 );
@@ -189,10 +202,15 @@ class WUAC_Spam_Score {
                 'points'    => self::WEIGHT_NAME_HAS_SPAM,
                 'triggered' => self::display_name_has_spam( $user ),
             ),
+            'excessive_dots'   => array(
+                'label'     => __( 'Excessive dots in email (5+)', 'wp-user-audit-cleanup' ),
+                'points'    => self::WEIGHT_EXCESSIVE_DOTS,
+                'triggered' => self::has_excessive_dots( $user->user_email ),
+            ),
             'suspicious_email' => array(
                 'label'     => __( 'Suspicious email pattern', 'wp-user-audit-cleanup' ),
                 'points'    => self::WEIGHT_SUSPICIOUS_EMAIL,
-                'triggered' => self::has_suspicious_email( $user->user_email ),
+                'triggered' => ! self::has_excessive_dots( $user->user_email ) && self::has_suspicious_email( $user->user_email ),
             ),
             'plus_addressing'  => array(
                 'label'     => __( 'Plus-addressing in email', 'wp-user-audit-cleanup' ),
@@ -213,6 +231,16 @@ class WUAC_Spam_Score {
                 'label'     => __( 'No WooCommerce orders', 'wp-user-audit-cleanup' ),
                 'points'    => self::WEIGHT_NO_ORDERS,
                 'triggered' => self::has_no_orders( $user->ID ),
+            ),
+            'local_equals_user' => array(
+                'label'     => __( 'Email local part matches username', 'wp-user-audit-cleanup' ),
+                'points'    => self::WEIGHT_EMAIL_LOCAL_EQUALS_USER,
+                'triggered' => self::email_local_equals_username( $user ),
+            ),
+            'email_spam_tld'   => array(
+                'label'     => __( 'Email domain has spam TLD', 'wp-user-audit-cleanup' ),
+                'points'    => self::WEIGHT_EMAIL_SPAM_TLD,
+                'triggered' => self::email_domain_has_spam_tld( $user->user_email ),
             ),
         );
 
@@ -362,6 +390,10 @@ class WUAC_Spam_Score {
             '/^[a-z]{1,3}[_\-]\d{4,}$/i',
             // Random looking: alternating single consonant-digit patterns.
             '/^(?:[bcdfghjklmnpqrstvwxyz]\d){3,}$/i',
+            // Letters + 2-5 trailing digits (e.g. yolandacole808, vivianhudson1959).
+            '/^[a-z]{5,20}\d{2,5}$/i',
+            // Long alphabetic names with no numbers/spaces/symbols (e.g. yunsanfartellekohl).
+            '/^[a-z]{15,}$/i',
         );
 
         foreach ( $patterns as $pattern ) {
@@ -659,5 +691,48 @@ class WUAC_Spam_Score {
         }
 
         return substr( $email, 0, $at_pos );
+    }
+
+    /**
+     * Check if the local part of the email has 5 or more dots.
+     *
+     * @param string $email The email address.
+     * @return bool True if dots count >= 5.
+     */
+    public static function has_excessive_dots( string $email ): bool {
+        $local = self::extract_local_part( $email );
+        return substr_count( $local, '.' ) >= 5;
+    }
+
+    /**
+     * Check if email local part is exactly matching the username.
+     *
+     * @param WP_User $user The user object.
+     * @return bool True if email local part equals user_login.
+     */
+    public static function email_local_equals_username( WP_User $user ): bool {
+        $local = self::extract_local_part( $user->user_email );
+        return strtolower( $user->user_login ) === strtolower( $local );
+    }
+
+    /**
+     * Check if the email domain ends in a spam TLD.
+     *
+     * @param string $email The email address.
+     * @return bool True if the email domain ends in a spam TLD.
+     */
+    public static function email_domain_has_spam_tld( string $email ): bool {
+        $parts = explode( '@', $email );
+        if ( count( $parts ) < 2 ) {
+            return false;
+        }
+        $domain = strtolower( $parts[1] );
+        foreach ( self::$spam_tlds as $tld ) {
+            $tld_len = strlen( $tld );
+            if ( substr( $domain, - $tld_len ) === $tld ) {
+                return true;
+            }
+        }
+        return false;
     }
 }

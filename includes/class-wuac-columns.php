@@ -24,6 +24,7 @@ class WUAC_Columns {
         add_filter( 'manage_users_columns', array( $this, 'add_columns' ) );
         add_filter( 'manage_users_custom_column', array( $this, 'render_column' ), 10, 3 );
         add_filter( 'manage_users_sortable_columns', array( $this, 'sortable_columns' ) );
+        add_action( 'pre_user_query', array( $this, 'handle_column_sorting' ) );
     }
 
     /**
@@ -63,6 +64,10 @@ class WUAC_Columns {
                 $user = get_userdata( $user_id );
                 if ( $user instanceof WP_User ) {
                     $score = WUAC_Spam_Score::calculate( $user );
+                    
+                    // Cache score in user meta to enable sorting.
+                    update_user_meta( $user_id, '_wuac_spam_score', $score );
+
                     if ( $score >= 70 ) {
                         $level = 'high';
                     } elseif ( $score >= 40 ) {
@@ -106,5 +111,32 @@ class WUAC_Columns {
         $columns['wuac_last_login'] = 'wuac_last_login';
         $columns['wuac_spam_score'] = 'wuac_spam_score';
         return $columns;
+    }
+
+    /**
+     * Handle sorting of user list by Last Login or Spam Score via pre_user_query.
+     *
+     * @param WP_User_Query $query The current WP_User_Query object.
+     * @return void
+     */
+    public function handle_column_sorting( WP_User_Query $query ): void {
+        global $wpdb;
+
+        if ( ! is_admin() ) {
+            return;
+        }
+
+        $orderby = $query->get( 'orderby' );
+        $order   = strtoupper( $query->get( 'order' ) ) === 'ASC' ? 'ASC' : 'DESC';
+
+        if ( 'wuac_last_login' === $orderby ) {
+            $query->query_from    .= " LEFT JOIN {$wpdb->usermeta} AS wuac_login_meta ON ({$wpdb->users}.ID = wuac_login_meta.user_id AND wuac_login_meta.meta_key = '_wuac_last_login')";
+            $query->query_orderby  = "ORDER BY wuac_login_meta.meta_value {$order}";
+        }
+
+        if ( 'wuac_spam_score' === $orderby ) {
+            $query->query_from    .= " LEFT JOIN {$wpdb->usermeta} AS wuac_spam_meta ON ({$wpdb->users}.ID = wuac_spam_meta.user_id AND wuac_spam_meta.meta_key = '_wuac_spam_score')";
+            $query->query_orderby  = "ORDER BY CAST(COALESCE(wuac_spam_meta.meta_value, 0) AS SIGNED) {$order}";
+        }
     }
 }

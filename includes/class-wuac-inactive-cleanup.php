@@ -39,9 +39,16 @@ class WUAC_Inactive_Cleanup {
                     ),
                 ),
                 'meta_query'  => array(
+                    'relation' => 'OR',
                     array(
                         'key'     => '_wuac_last_login',
                         'compare' => 'NOT EXISTS',
+                    ),
+                    array(
+                        'key'     => '_wuac_last_login',
+                        'value'   => $cutoff,
+                        'compare' => '<',
+                        'type'    => 'DATETIME',
                     ),
                 ),
                 'number'      => -1,

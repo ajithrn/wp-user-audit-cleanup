@@ -129,6 +129,7 @@ class WUAC_User_Scanner {
 
                 if ( class_exists( 'WUAC_Spam_Score' ) ) {
                     $score = WUAC_Spam_Score::calculate( $user );
+                    update_user_meta( $user->ID, '_wuac_spam_score', $score );
                     if ( $score >= self::AUTO_FLAG_THRESHOLD ) {
                         update_user_meta( $user->ID, '_wuac_spam_flag', '1' );
                         $flagged++;
