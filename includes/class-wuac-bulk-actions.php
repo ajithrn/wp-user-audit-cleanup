@@ -26,22 +26,24 @@ class WUAC_Bulk_Actions {
         add_action( 'load-users.php', array( $this, 'handle_delete_all_spam' ) );
         add_action( 'restrict_manage_users', array( $this, 'render_delete_spam_button' ) );
         add_action( 'admin_footer-users.php', array( $this, 'render_confirmation_script' ) );
+        add_action( 'admin_notices', array( $this, 'show_bulk_notices' ) );
     }
 
     /**
-     * Add "Flag as Spam" and "Unflag Spam" to the bulk actions dropdown.
+     * Add "Flag as Spam", "Unflag Spam", and "Delete Permanently (WUAC)" to the bulk actions dropdown.
      *
      * @param array $actions Existing bulk actions.
      * @return array Modified bulk actions.
      */
     public function add_bulk_actions( array $actions ): array {
-        $actions['wuac_flag_spam']   = __( 'Flag as Spam', 'wp-user-audit-cleanup' );
-        $actions['wuac_unflag_spam'] = __( 'Unflag Spam', 'wp-user-audit-cleanup' );
+        $actions['wuac_flag_spam']          = __( 'Flag as Spam', 'wp-user-audit-cleanup' );
+        $actions['wuac_unflag_spam']        = __( 'Unflag Spam', 'wp-user-audit-cleanup' );
+        $actions['wuac_delete_permanently'] = __( 'Delete Permanently (WUAC)', 'wp-user-audit-cleanup' );
         return $actions;
     }
 
     /**
-     * Process "Flag as Spam" and "Unflag Spam" bulk actions.
+     * Process bulk actions.
      *
      * @param string $redirect_to The redirect URL.
      * @param string $doaction    The action being taken.
@@ -61,6 +63,19 @@ class WUAC_Bulk_Actions {
                 delete_user_meta( (int) $user_id, '_wuac_spam_flag' );
             }
             $redirect_to = add_query_arg( 'wuac_unflagged', count( $user_ids ), $redirect_to );
+        }
+
+        if ( 'wuac_delete_permanently' === $doaction ) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            $reassign_to = get_current_user_id();
+            $deleted = 0;
+            foreach ( $user_ids as $user_id ) {
+                if ( (int) $user_id !== $reassign_to ) {
+                    wp_delete_user( (int) $user_id, $reassign_to );
+                    $deleted++;
+                }
+            }
+            $redirect_to = add_query_arg( 'wuac_deleted', $deleted, $redirect_to );
         }
 
         return $redirect_to;
@@ -248,5 +263,39 @@ class WUAC_Bulk_Actions {
         })();
         </script>
         <?php
+    }
+
+    /**
+     * Show success notices for custom bulk actions.
+     */
+    public function show_bulk_notices(): void {
+        global $pagenow;
+        if ( 'users.php' !== $pagenow ) {
+            return;
+        }
+
+        if ( isset( $_GET['wuac_flagged'] ) ) {
+            $count = intval( $_GET['wuac_flagged'] );
+            printf(
+                '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+                esc_html( sprintf( _n( 'Successfully flagged %d user as spam.', 'Successfully flagged %d users as spam.', $count, 'wp-user-audit-cleanup' ), $count ) )
+            );
+        }
+
+        if ( isset( $_GET['wuac_unflagged'] ) ) {
+            $count = intval( $_GET['wuac_unflagged'] );
+            printf(
+                '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+                esc_html( sprintf( _n( 'Successfully unflagged %d user from spam.', 'Successfully unflagged %d users from spam.', $count, 'wp-user-audit-cleanup' ), $count ) )
+            );
+        }
+
+        if ( isset( $_GET['wuac_deleted'] ) ) {
+            $count = intval( $_GET['wuac_deleted'] );
+            printf(
+                '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+                esc_html( sprintf( _n( 'Successfully deleted %d user.', 'Successfully deleted %d users.', $count, 'wp-user-audit-cleanup' ), $count ) )
+            );
+        }
     }
 }

@@ -65,6 +65,9 @@ class WUAC_Admin_Page {
                 <button class="wuac-tab" role="tab" aria-selected="false" data-tab="cleanup">
                     <?php esc_html_e( 'Inactive Cleanup', 'wp-user-audit-cleanup' ); ?>
                 </button>
+                <button class="wuac-tab" role="tab" aria-selected="false" data-tab="spam-cleanup">
+                    <?php esc_html_e( 'Spam Cleanup', 'wp-user-audit-cleanup' ); ?>
+                </button>
                 <button class="wuac-tab" role="tab" aria-selected="false" data-tab="settings">
                     <?php esc_html_e( 'Settings', 'wp-user-audit-cleanup' ); ?>
                 </button>
@@ -89,16 +92,55 @@ class WUAC_Admin_Page {
             <div class="wuac-panel" id="wuac-panel-cleanup" role="tabpanel" data-tab="cleanup" hidden>
                 <div class="wuac-card">
                     <h2><?php esc_html_e( 'Inactive Cleanup', 'wp-user-audit-cleanup' ); ?></h2>
-                    <p class="description"><?php esc_html_e( 'Find and remove users who registered but never logged in.', 'wp-user-audit-cleanup' ); ?></p>
+                    <p class="description"><?php esc_html_e( 'Find and remove users who registered but are inactive.', 'wp-user-audit-cleanup' ); ?></p>
                     <div class="wuac-inline-form">
                         <div class="wuac-filter-group">
-                            <label for="wuac-inactive-days"><?php esc_html_e( 'Days since registration', 'wp-user-audit-cleanup' ); ?></label>
+                            <label for="wuac-inactive-days"><?php esc_html_e( 'Inactivity (Days)', 'wp-user-audit-cleanup' ); ?></label>
                             <input type="number" id="wuac-inactive-days" value="30" min="1" class="small-text" />
                         </div>
+
+                        <div class="wuac-filter-group">
+                            <label for="wuac-inactive-role"><?php esc_html_e( 'Role', 'wp-user-audit-cleanup' ); ?></label>
+                            <select id="wuac-inactive-role">
+                                <option value="all"><?php esc_html_e( 'All Roles', 'wp-user-audit-cleanup' ); ?></option>
+                                <?php
+                                $roles = wp_roles()->get_names();
+                                foreach ( $roles as $role_key => $role_name ) {
+                                    printf(
+                                        '<option value="%s">%s</option>',
+                                        esc_attr( $role_key ),
+                                        esc_html( translate_user_role( $role_name ) )
+                                    );
+                                }
+                                ?>
+                            </select>
+                        </div>
+
+                        <div class="wuac-filter-group">
+                            <label for="wuac-inactive-type"><?php esc_html_e( 'Inactivity Type', 'wp-user-audit-cleanup' ); ?></label>
+                            <select id="wuac-inactive-type">
+                                <option value="both"><?php esc_html_e( 'Both (Never logged in or inactive since last login)', 'wp-user-audit-cleanup' ); ?></option>
+                                <option value="never"><?php esc_html_e( 'Never Logged In', 'wp-user-audit-cleanup' ); ?></option>
+                                <option value="last_login"><?php esc_html_e( 'Logged in but inactive since last login', 'wp-user-audit-cleanup' ); ?></option>
+                            </select>
+                        </div>
+
                         <button type="button" id="wuac-find-inactive-btn" class="button button-primary"><?php esc_html_e( 'Find Inactive Users', 'wp-user-audit-cleanup' ); ?></button>
                     </div>
                 </div>
                 <div id="wuac-inactive-results" hidden></div>
+            </div>
+
+            <!-- Tab: Spam Cleanup -->
+            <div class="wuac-panel" id="wuac-panel-spam-cleanup" role="tabpanel" data-tab="spam-cleanup" hidden>
+                <div class="wuac-card">
+                    <h2><?php esc_html_e( 'Spam Cleanup (High Risk)', 'wp-user-audit-cleanup' ); ?></h2>
+                    <p class="description"><?php esc_html_e( 'Find and bulk delete users whose calculated spam score is high (≥ 70).', 'wp-user-audit-cleanup' ); ?></p>
+                    <div class="wuac-inline-form">
+                        <button type="button" id="wuac-find-spam-btn" class="button button-primary"><?php esc_html_e( 'Find High Risk Users', 'wp-user-audit-cleanup' ); ?></button>
+                    </div>
+                </div>
+                <div id="wuac-spam-cleanup-results" hidden></div>
             </div>
 
             <!-- Tab: Settings -->

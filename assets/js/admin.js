@@ -178,13 +178,19 @@
     function initInactiveCleanup() {
         const findBtn = document.getElementById('wuac-find-inactive-btn');
         const daysInput = document.getElementById('wuac-inactive-days');
+        const roleSelect = document.getElementById('wuac-inactive-role');
+        const typeSelect = document.getElementById('wuac-inactive-type');
         const resultsWrap = document.getElementById('wuac-inactive-results');
 
         findBtn.addEventListener('click', async () => {
             setLoading(findBtn, true);
             resultsWrap.hidden = true;
 
-            const res = await post('wuac_find_inactive', { days: daysInput.value });
+            const res = await post('wuac_find_inactive', {
+                days: daysInput.value,
+                role: roleSelect ? roleSelect.value : 'all',
+                type: typeSelect ? typeSelect.value : 'both'
+            });
             setLoading(findBtn, false);
 
             if (!res.success) {
@@ -251,6 +257,109 @@
                     if (delRes.success) {
                         toast(delRes.data.message);
                         // Refresh the search list
+                        findBtn.click();
+                    } else {
+                        toast(delRes.data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // ── Spam Cleanup (High Risk) ──────────────────────────────────────
+
+    function initSpamCleanup() {
+        const findBtn = document.getElementById('wuac-find-spam-btn');
+        const resultsWrap = document.getElementById('wuac-spam-cleanup-results');
+
+        if (!findBtn) return;
+
+        findBtn.addEventListener('click', async () => {
+            setLoading(findBtn, true);
+            resultsWrap.hidden = true;
+
+            const res = await post('wuac_find_high_risk');
+            setLoading(findBtn, false);
+
+            if (!res.success) {
+                toast(res.data.message, 'error');
+                return;
+            }
+
+            const { users, count } = res.data;
+            let html = '<div class="wuac-card">';
+            html += '<h3>Found ' + count + ' high risk user(s) (Score ≥ 70)</h3>';
+
+            if (count > 0) {
+                html += '<table class="wp-list-table widefat fixed striped users">';
+                html += '<thead><tr>';
+                html += '<td class="manage-column column-cb check-column" style="width: 2.2em;"><input type="checkbox" id="wuac-spam-select-all" /></td>';
+                html += '<th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Score</th><th>Registered</th>';
+                html += '</tr></thead><tbody>';
+                users.forEach(u => {
+                    html += '<tr>';
+                    html += '<th class="check-column"><input type="checkbox" class="wuac-spam-user-cb" value="' + esc(u.ID) + '" /></th>';
+                    html += '<td>' + esc(u.ID) + '</td>';
+                    html += '<td>' + esc(u.user_login) + '</td>';
+                    html += '<td>' + esc(u.user_email) + '</td>';
+                    html += '<td><span class="wuac-role-badge">' + esc(u.role || 'none') + '</span></td>';
+                    html += '<td><span class="wuac-score wuac-score--high">' + esc(u.spam_score || 0) + '</span></td>';
+                    html += '<td>' + esc(u.user_registered) + '</td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                html += '<div style="margin-top:12px; display:flex; gap:8px;">';
+                html += '<button type="button" id="wuac-delete-spam-selected-btn" class="button button-link-delete">Delete Selected</button>';
+                html += '<button type="button" id="wuac-delete-spam-all-btn" class="button button-secondary">Delete All ' + count + ' High Risk Users</button>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+            resultsWrap.innerHTML = html;
+            resultsWrap.hidden = false;
+
+            // Select all checkbox
+            const selectAll = document.getElementById('wuac-spam-select-all');
+            if (selectAll) {
+                selectAll.addEventListener('change', () => {
+                    document.querySelectorAll('.wuac-spam-user-cb').forEach(cb => { cb.checked = selectAll.checked; });
+                });
+            }
+
+            // Delete selected
+            const deleteSelectedBtn = document.getElementById('wuac-delete-spam-selected-btn');
+            if (deleteSelectedBtn) {
+                deleteSelectedBtn.addEventListener('click', async () => {
+                    const ids = [...document.querySelectorAll('.wuac-spam-user-cb:checked')].map(cb => cb.value);
+                    if (!ids.length) { toast('No users selected.', 'error'); return; }
+                    if (!confirm('Delete ' + ids.length + ' user(s)? This cannot be undone.')) return;
+
+                    setLoading(deleteSelectedBtn, true);
+                    const delRes = await post('wuac_delete_users', { user_ids: ids });
+                    setLoading(deleteSelectedBtn, false);
+
+                    if (delRes.success) {
+                        toast(delRes.data.message);
+                        findBtn.click();
+                    } else {
+                        toast(delRes.data.message, 'error');
+                    }
+                });
+            }
+
+            // Delete all
+            const deleteAllBtn = document.getElementById('wuac-delete-spam-all-btn');
+            if (deleteAllBtn) {
+                deleteAllBtn.addEventListener('click', async () => {
+                    const ids = users.map(u => u.ID);
+                    if (!confirm('Delete all ' + ids.length + ' high risk user(s)? This cannot be undone.')) return;
+
+                    setLoading(deleteAllBtn, true);
+                    const delRes = await post('wuac_delete_users', { user_ids: ids });
+                    setLoading(deleteAllBtn, false);
+
+                    if (delRes.success) {
+                        toast(delRes.data.message);
                         findBtn.click();
                     } else {
                         toast(delRes.data.message, 'error');
@@ -383,6 +492,7 @@
         initTabs();
         initEmailLookup();
         initInactiveCleanup();
+        initSpamCleanup();
         initDomainManagement();
         initScanAndErase();
     }

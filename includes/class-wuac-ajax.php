@@ -24,6 +24,7 @@ class WUAC_Ajax {
         add_action( 'wp_ajax_wuac_delete_users', array( $this, 'handle_delete_users' ) );
         add_action( 'wp_ajax_wuac_find_inactive', array( $this, 'handle_find_inactive' ) );
         add_action( 'wp_ajax_wuac_delete_inactive', array( $this, 'handle_delete_inactive' ) );
+        add_action( 'wp_ajax_wuac_find_high_risk', array( $this, 'handle_find_high_risk' ) );
         add_action( 'wp_ajax_wuac_add_domain', array( $this, 'handle_add_domain' ) );
         add_action( 'wp_ajax_wuac_remove_domain', array( $this, 'handle_remove_domain' ) );
         add_action( 'wp_ajax_wuac_get_domains', array( $this, 'handle_get_domains' ) );
@@ -109,13 +110,15 @@ class WUAC_Ajax {
         $this->verify_request();
 
         $days = isset( $_POST['days'] ) ? intval( $_POST['days'] ) : 30;
+        $role = isset( $_POST['role'] ) ? sanitize_text_field( wp_unslash( $_POST['role'] ) ) : 'all';
+        $type = isset( $_POST['type'] ) ? sanitize_text_field( wp_unslash( $_POST['type'] ) ) : 'both';
 
         if ( $days < 1 ) {
             wp_send_json_error( array( 'message' => __( 'Please enter a value of at least 1 day.', 'wp-user-audit-cleanup' ) ) );
         }
 
         $cleanup = new WUAC_Inactive_Cleanup();
-        $users   = $cleanup->find_inactive_users( $days );
+        $users   = $cleanup->find_inactive_users( $days, $role, $type );
 
         $data = array_map( function ( $user ) {
             $user_obj = get_userdata( $user->ID );
@@ -258,6 +261,65 @@ class WUAC_Ajax {
 
         wp_send_json_success( array(
             'message' => __( 'All plugin data has been erased.', 'wp-user-audit-cleanup' ),
+        ) );
+    }
+
+    /**
+     * Handle find high risk users AJAX request.
+     *
+     * @return void
+     */
+    public function handle_find_high_risk(): void {
+        $this->verify_request();
+
+        if ( ! class_exists( 'WUAC_Spam_Score' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Spam scoring engine not available.', 'wp-user-audit-cleanup' ) ) );
+        }
+
+        global $wpdb;
+        $high_risk_users = array();
+        $batch_size      = 200;
+        $offset          = 0;
+
+        do {
+            // Fetch user IDs in batches to avoid loading everything into memory at once.
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $batch_ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->users} LIMIT %d OFFSET %d",
+                $batch_size,
+                $offset
+            ) );
+
+            if ( empty( $batch_ids ) ) {
+                break;
+            }
+
+            foreach ( $batch_ids as $user_id ) {
+                $user = get_userdata( (int) $user_id );
+                if ( ! $user ) {
+                    continue;
+                }
+
+                $score = WUAC_Spam_Score::calculate( $user );
+                if ( $score >= 70 ) {
+                    $role = ! empty( $user->roles ) ? reset( $user->roles ) : 'none';
+                    $high_risk_users[] = array(
+                        'ID'              => $user->ID,
+                        'user_login'      => $user->user_login,
+                        'user_email'      => $user->user_email,
+                        'user_registered' => $user->user_registered,
+                        'role'            => $role,
+                        'spam_score'      => $score,
+                    );
+                }
+            }
+
+            $offset += $batch_size;
+        } while ( count( $batch_ids ) === $batch_size );
+
+        wp_send_json_success( array(
+            'users' => $high_risk_users,
+            'count' => count( $high_risk_users ),
         ) );
     }
 

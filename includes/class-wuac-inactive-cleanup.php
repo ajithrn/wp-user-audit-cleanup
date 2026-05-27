@@ -22,40 +22,75 @@ class WUAC_Inactive_Cleanup {
 
     /**
      * Find users whose registration date is older than $days days
-     * and who have no _wuac_last_login meta recorded.
+     * and match the inactive and role criteria.
      *
-     * @param int $days Number of days since registration.
+     * @param int    $days Number of days since registration or last login.
+     * @param string $role Filter by role (or "all").
+     * @param string $type Filter type: "never", "last_login", or "both".
      * @return array Array of WP_User objects matching the criteria.
      */
-    public function find_inactive_users( int $days ): array {
-        $cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+    public function find_inactive_users( int $days, string $role = 'all', string $type = 'both' ): array {
+        $cutoff      = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+        $role_filter = ( 'all' === $role ) ? '' : $role;
 
-        $query = new WP_User_Query(
-            array(
-                'date_query'  => array(
-                    array(
-                        'column' => 'user_registered',
-                        'before' => $cutoff,
-                    ),
-                ),
-                'meta_query'  => array(
-                    'relation' => 'OR',
-                    array(
-                        'key'     => '_wuac_last_login',
-                        'compare' => 'NOT EXISTS',
-                    ),
-                    array(
-                        'key'     => '_wuac_last_login',
-                        'value'   => $cutoff,
-                        'compare' => '<',
-                        'type'    => 'DATETIME',
-                    ),
-                ),
-                'number'      => -1,
-            )
-        );
+        $results  = array();
+        $user_ids = array();
 
-        return $query->get_results();
+        // 1. Users who never logged in (must have registered before cutoff).
+        if ( 'both' === $type || 'never' === $type ) {
+            $query_never = new WP_User_Query(
+                array(
+                    'role'       => $role_filter,
+                    'date_query' => array(
+                        array(
+                            'column' => 'user_registered',
+                            'before' => $cutoff,
+                        ),
+                    ),
+                    'meta_query' => array(
+                        array(
+                            'key'     => '_wuac_last_login',
+                            'compare' => 'NOT EXISTS',
+                        ),
+                    ),
+                    'number'     => -1,
+                    'fields'     => 'all',
+                )
+            );
+            foreach ( $query_never->get_results() as $user ) {
+                if ( ! in_array( $user->ID, $user_ids, true ) ) {
+                    $user_ids[] = $user->ID;
+                    $results[]  = $user;
+                }
+            }
+        }
+
+        // 2. Users who logged in but last login was before cutoff.
+        if ( 'both' === $type || 'last_login' === $type ) {
+            $query_logged = new WP_User_Query(
+                array(
+                    'role'       => $role_filter,
+                    'meta_query' => array(
+                        array(
+                            'key'     => '_wuac_last_login',
+                            'value'   => $cutoff,
+                            'compare' => '<',
+                            'type'    => 'DATETIME',
+                        ),
+                    ),
+                    'number'     => -1,
+                    'fields'     => 'all',
+                )
+            );
+            foreach ( $query_logged->get_results() as $user ) {
+                if ( ! in_array( $user->ID, $user_ids, true ) ) {
+                    $user_ids[] = $user->ID;
+                    $results[]  = $user;
+                }
+            }
+        }
+
+        return $results;
     }
 
     /**

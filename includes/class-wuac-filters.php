@@ -23,6 +23,16 @@ class WUAC_Filters {
     private array $errors = array();
 
     /**
+     * Minimum risk score for custom filtering.
+     */
+    private int $filter_risk_min = 0;
+
+    /**
+     * Maximum risk score for custom filtering.
+     */
+    private int $filter_risk_max = 100;
+
+    /**
      * Register hooks.
      */
     public function init(): void {
@@ -55,6 +65,8 @@ class WUAC_Filters {
             'never'            => __( 'Never Logged In', 'wp-user-audit-cleanup' ),
             'has_logged_in'    => __( 'Has Logged In', 'wp-user-audit-cleanup' ),
             'high_risk'        => __( 'High Risk (Score ≥ 70)', 'wp-user-audit-cleanup' ),
+            'medium_risk'      => __( 'Medium Risk (Score 40-69)', 'wp-user-audit-cleanup' ),
+            'low_risk'         => __( 'Low Risk (Score < 40)', 'wp-user-audit-cleanup' ),
             'disposable_email' => __( 'Disposable Email', 'wp-user-audit-cleanup' ),
         );
 
@@ -270,7 +282,15 @@ class WUAC_Filters {
                 break;
 
             case 'high_risk':
-                $this->filter_high_risk( $query );
+                $this->filter_by_risk_score( $query, 70, 100 );
+                break;
+
+            case 'medium_risk':
+                $this->filter_by_risk_score( $query, 40, 69 );
+                break;
+
+            case 'low_risk':
+                $this->filter_by_risk_score( $query, 0, 39 );
                 break;
 
             case 'disposable_email':
@@ -318,30 +338,29 @@ class WUAC_Filters {
     }
 
     /**
-     * Filter to high-risk users (spam score ≥ 70).
-     *
-     * Uses meta_query combinations that approximate the high-risk criteria:
-     * no login (30) + disposable email flag (30) + one more factor = ≥ 70.
-     * Since spam score is computed on-the-fly, we use pre_user_query to
-     * collect all user IDs and then restrict to those with score ≥ 70.
+     * Set limits and hook risk score query modifier.
      *
      * @param WP_User_Query $query The user query.
+     * @param int           $min   Minimum score.
+     * @param int           $max   Maximum score.
      */
-    private function filter_high_risk( WP_User_Query $query ): void {
-        add_action( 'pre_user_query', array( $this, 'modify_query_for_high_risk' ) );
+    private function filter_by_risk_score( WP_User_Query $query, int $min, int $max ): void {
+        $this->filter_risk_min = $min;
+        $this->filter_risk_max = $max;
+        add_action( 'pre_user_query', array( $this, 'modify_query_for_risk_score' ) );
     }
 
     /**
-     * Modify the SQL query to restrict results to high-risk users.
+     * Modify the SQL query to restrict results to users within the chosen risk score range.
      *
      * Processes users in batches to avoid memory exhaustion on large sites,
      * computes spam scores, and injects an IN clause.
      *
      * @param WP_User_Query $query The user query (passed by reference).
      */
-    public function modify_query_for_high_risk( WP_User_Query $query ): void {
+    public function modify_query_for_risk_score( WP_User_Query $query ): void {
         // Remove this callback to prevent recursion.
-        remove_action( 'pre_user_query', array( $this, 'modify_query_for_high_risk' ) );
+        remove_action( 'pre_user_query', array( $this, 'modify_query_for_risk_score' ) );
 
         if ( ! class_exists( 'WUAC_Spam_Score' ) ) {
             return;
@@ -349,9 +368,9 @@ class WUAC_Filters {
 
         global $wpdb;
 
-        $high_risk_ids = array();
-        $batch_size    = 500;
-        $offset        = 0;
+        $matching_ids = array();
+        $batch_size   = 500;
+        $offset       = 0;
 
         do {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -366,21 +385,22 @@ class WUAC_Filters {
                 if ( ! $user ) {
                     continue;
                 }
-                if ( WUAC_Spam_Score::calculate( $user ) >= 70 ) {
-                    $high_risk_ids[] = (int) $user_id;
+                $score = WUAC_Spam_Score::calculate( $user );
+                if ( $score >= $this->filter_risk_min && $score <= $this->filter_risk_max ) {
+                    $matching_ids[] = (int) $user_id;
                 }
             }
 
             $offset += $batch_size;
         } while ( count( $batch ) === $batch_size );
 
-        if ( empty( $high_risk_ids ) ) {
+        if ( empty( $matching_ids ) ) {
             // Force empty result set.
             $query->query_where .= ' AND 1=0';
             return;
         }
 
-        $ids_placeholder = implode( ',', $high_risk_ids );
+        $ids_placeholder = implode( ',', $matching_ids );
         $query->query_where .= " AND {$wpdb->users}.ID IN ({$ids_placeholder})";
     }
 
